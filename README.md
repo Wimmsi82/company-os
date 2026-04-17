@@ -1,44 +1,56 @@
-# Company OS
+<div align="center">
+
+# 🏢 Company OS
 
 **Autonomes Multi-Agent-System für Unternehmenssteuerung**
 
-**Company OS** ist ein autonomes Multi-Agent-System das Unternehmensentscheidungen durch strukturierte KI-Deliberation trifft, sich selbst verbessert und auf Wunsch externe Berater hinzuzieht.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg)](https://nodejs.org)
+[![Platform](https://img.shields.io/badge/Platform-Mac%20%7C%20Windows%20%7C%20Linux%20%7C%20Pi-lightgrey.svg)]()
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-kostenlos-orange.svg)](https://claude.ai/code)
 
-**Wie eine Deliberation abläuft**
-Du stellst eine Frage. Das System startet einen iterativen Loop mit bis zu drei Runden. In Runde 1 analysieren alle acht Kern-Agenten parallel — jeder mit seinem eigenen persistenten Gedächtnis und dem globalen Unternehmenskontext. Der CFO denkt in EBITDA und Free Cashflow. Der CMO in CAC/LTV und Attribution. Der CTO in DORA-Metriken und Tech Debt. Kein Agent ist generisch.
+*8 KI-Experten deliberieren. Der CEO entscheidet. Das System verbessert sich selbst.*
 
-Nach Runde 1 gibt der CEO-Agent Zwischenfeedback: Was ist noch ungeklärt? Wo liegen die entscheidenden Spannungen? Runde 2 startet mit vollem 360-Grad-Kontext — jeder Agent sieht alle Analysen aller anderen aus Runde 1, das CEO-Feedback und alles was andere Agenten als geteiltes Wissen beigetragen haben.
-Agenten können während einer Runde direkte Fragen an andere Agenten stellen. "Frage an Finanzen: Was ist der maximale Rabattspielraum ohne Margenverlust?" Die Zielabteilung antwortet sofort. Die Antwort fließt in alle nachfolgenden Runden ein.
-
-Parallel zu den Analyserunden verhandeln definierte Abteilungspaare strukturiert miteinander. Sales gegen Legal über Vertragskonditionen. Marketing gegen Finanzen über Budget und ROI. F&E gegen Operations über Innovation versus Stabilität. Echter Widerspruch statt paralleler Monologe.
-
-Wenn Positionen zwischen Runden stabil bleiben, erkennt das System Konvergenz und bricht früher ab. Kein unnötiger Token-Verbrauch.
-
-**Was der CEO-Agent tut**
-Der CEO synthetisiert alle Runden, alle Verhandlungsergebnisse und alle Consultant-Inputs zu einer strukturierten Entscheidung: ja / nein / bedingt. Er benennt welche Abteilungen den Ausschlag gaben. Er formuliert konkrete Action Items mit Verantwortlichkeit und Deadline — die werden sofort als Tasks in die Queue geschrieben und an die zuständigen Abteilungen delegiert. Er definiert messbare Follow-up-Bedingungen mit Prüfdatum. Er eskaliert an den Operator wenn eine menschliche Entscheidung nötig ist.
-
-Der CEO erkennt auch wenn eine wichtige Perspektive gefehlt hat. Er erstellt die fehlende Abteilung selbst — Rolle, Aufgaben, Systemlogik. Beim nächsten Lauf ist sie aktiv.
-
-**Wie sich das System selbst verbessert**
-Nach jeder Deliberation bewertet ein Meta-Agent jeden Kern-Agenten auf einer Skala von 1 bis 10. Er analysiert was präzise war, was vage, was übersehen wurde. Agenten mit einem Score unter 7 bekommen automatisch überarbeitete System-Prompts. Die Verbesserungen sind persistent — der nächste Lauf startet mit besseren Agenten als der letzte.
-
-**Externe Consultants**
-McKinsey, BCG, EY, Deloitte, Roland Berger, KPMG sind als spezialisierte Berater-Agenten implementiert — jeder mit dem methodischen Ansatz der jeweiligen Firma. McKinsey denkt in MECE und Pyramid Principle. BCG in Portfoliodynamik und Experience Curve. EY in Risk-first und Compliance. Roland Berger pragmatisch und DACH-spezifisch. Sie können einzeln oder kombiniert zu jeder Deliberation hinzugezogen werden.
-
-**Persistentes Gedächtnis**
-Agenten vergessen nicht. Jede Abteilung hat ein eigenes Gedächtnis mit Confidence-Werten das über alle Deliberationen hinweg erhalten bleibt. Dazu kommt ein globales Gedächtnis mit dem Unternehmenskontext den du beim Onboarding eingibst — Branche, Projekte, Ziele, Constraints, Wettbewerber. Diesen Kontext sehen alle Agenten bei jedem Lauf.
-
-**Unteragenten**
-Haupt-Agenten können für komplexe Teilaufgaben spezialisierte Unteragenten spawnen. Der Marketing-Agent beauftragt einen Keyword-Research-Unteragenten. Der Strategie-Agent einen Wettbewerbsanalyse-Unteragenten. Ergebnis kommt zurück, Unteragent löst sich auf.
-
-**Zwei Modi**
-CLI-Modus läuft kostenlos über Claude Code ohne API Key. API-Modus läuft mit eigenem Anthropic Key — dann auch mit autonomem 24/7-Betrieb auf dem Raspberry Pi, Web-Dashboard, Token-Budget und automatischen täglichen Zyklen.
-
-Jede Deliberation endet als grafisch aufbereitetes PDF das automatisch geöffnet wird.
+</div>
 
 ---
 
-## Schnellstart
+## Was ist Company OS?
+
+Du stellst eine Frage. 8 spezialisierte KI-Abteilungen analysieren sie parallel, stellen sich gegenseitig Fragen, widersprechen sich, verhandeln — und ein CEO-Agent synthetisiert alles zu einer strukturierten Entscheidung mit konkretem Handlungsplan.
+
+Wenn der CEO merkt dass eine Perspektive fehlt, erstellt er die fehlende Abteilung selbst. Ohne zu fragen.
+
+Das Ergebnis landet als PDF auf deinem Schreibtisch.
+
+---
+
+## ⚡ Installation
+
+### 🍎 Mac
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Wimmsi82/company-os/main/install-mac.sh | bash
+```
+
+### 🪟 Windows
+
+PowerShell als Administrator öffnen:
+
+```powershell
+irm https://raw.githubusercontent.com/Wimmsi82/company-os/main/install-windows.ps1 | iex
+```
+
+> Der Installer erkennt automatisch ob WSL2 verfügbar ist und wählt den besten Modus.
+> Alternativ: API-Modus ohne WSL2 direkt auf Windows.
+
+### 🐧 Raspberry Pi
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Wimmsi82/company-os/main/install-pi.sh | bash
+```
+
+### 📦 Manuell
 
 ```bash
 git clone https://github.com/Wimmsi82/company-os.git
@@ -47,90 +59,195 @@ npm install
 npm run setup
 ```
 
-`npm run setup` führt dich durch die Einrichtung — du wählst zwischen **Claude Code CLI** (kein API Key) oder **Anthropic API** (eigener Key).
+---
 
-Danach:
+## 🚀 Verwendung
 
 ```bash
-node run.js --onboarding          # Unternehmenskontext eingeben
-node run.js "Deine erste Frage"   # Deliberation starten → PDF
+# Unternehmenskontext eingeben (einmalig)
+node run.js --onboarding
+
+# Deliberation starten
+node run.js "Sollen wir die Preise erhöhen?"
+
+# Mit externen Consultants
+node run.js --consultant mckinsey "Markteintrittsstrategie DACH"
+node run.js --consultant mckinsey,ey,bcg "Sollen wir expandieren?"
+
+# Alle verfügbaren Consultants anzeigen
+node run.js --list-consultants
+
+# Ohne PDF
+node run.js --no-pdf "Schnelle Frage"
+
+# Agent-Performance anzeigen
+node run.js --performance
 ```
 
 ---
 
-## Modi
+## 🧠 Wie es funktioniert
 
-| Modus | Voraussetzung | Kosten |
-|-------|--------------|--------|
-| `CLAUDE_MODE=cli` | Claude Code installiert | Kostenlos im Max-Plan |
-| `CLAUDE_MODE=api` | Anthropic API Key | ~$0.01–0.10 pro Deliberation |
-
-Modus jederzeit wechseln: `npm run setup` erneut ausführen.
+```
+Du stellst eine Frage
+        ↓
+┌─────────────────────────────────────────┐
+│  Iterativer Loop (bis zu 3 Runden)      │
+│                                         │
+│  Runde 1: Alle 8 Agenten analysieren    │
+│  Runde 2: 360-Grad-Kontext + Fragen     │
+│  Runde 3: Konvergenz oder weitere Runde │
+└─────────────────────────────────────────┘
+        ↓
+Verhandlungsrunden (Sales vs. Legal etc.)
+        ↓
+CEO synthetisiert → Entscheidung + Plan
+        ↓
+Meta-Agent verbessert schwache Agenten
+        ↓
+PDF landet auf deinem Schreibtisch
+```
 
 ---
 
-## Befehle
+## 👥 Die 8 Kern-Agenten
+
+| Agent | Frameworks | Kennzahlen |
+|-------|-----------|------------|
+| **Strategie** | Porter's Five Forces, Blue Ocean, OKR | TAM/SAM/SOM, NPS |
+| **Finanzen** | DCF, EBITDA, Unit Economics | Free Cashflow, CAC Payback |
+| **Marketing** | AARRR-Funnel, Attribution, Positioning | CAC, LTV, ROAS |
+| **Sales** | MEDDIC, Challenger Sale, Pipeline Velocity | ARR, Win Rate |
+| **HR** | 9-Box-Grid, EVP, Skills-based Org | eNPS, Time-to-Hire |
+| **F&E** | DORA Metrics, Tech Debt Quadrant, Shape Up | Deployment Frequency |
+| **Legal** | Risk-Reward, DSGVO, Regulatory Scanning | Litigation Exposure |
+| **Operations** | Theory of Constraints, Lean Six Sigma | Throughput, OTIF |
+
+---
+
+## 🎩 Externe Consultants
 
 ```bash
-npm run setup                         # Einrichtung / Modus wechseln
-node run.js --onboarding              # Unternehmenskontext eingeben
-node run.js "Frage"                   # Deliberation + PDF
-node run.js --no-pdf "Frage"          # Ohne PDF
-node run.js --context                 # Kontext anzeigen
-node run.js --set-context "key=val"   # Kontext setzen
-node run.js --performance             # Agent-Performance
-npm start                             # Server + Dashboard (API-Modus)
+node run.js --list-consultants
+```
+
+| ID | Firma | Methodik |
+|----|-------|---------|
+| `mckinsey` | McKinsey & Company | MECE, Pyramid Principle, 80/20 |
+| `bcg` | Boston Consulting Group | BCG-Matrix, Experience Curve |
+| `ey` | Ernst & Young | Risk Framework, Due Diligence |
+| `deloitte` | Deloitte | Digital Maturity, Cyber Risk |
+| `rolandberger` | Roland Berger | DACH-Fokus, Mittelstand |
+| `kpmg` | KPMG | Audit Mindset, Tax Efficiency |
+
+---
+
+## 🔧 Modi
+
+| Modus | Voraussetzung | Kosten | Plattform |
+|-------|--------------|--------|-----------|
+| `CLAUDE_MODE=cli` | Claude Code installiert | **Kostenlos** im Max-Plan | Mac, Linux, WSL2 |
+| `CLAUDE_MODE=api` | Anthropic API Key | ~$0.01–0.10/Deliberation | Alle Plattformen |
+
+---
+
+## 🖥️ Windows Setup
+
+**Option 1 — WSL2 (empfohlen)**
+
+```powershell
+# Als Administrator
+wsl --install
+# Nach Neustart: Ubuntu einrichten, dann Installer ausführen
+irm https://raw.githubusercontent.com/Wimmsi82/company-os/main/install-windows.ps1 | iex
+```
+
+**Option 2 — API-Modus (kein WSL2 nötig)**
+
+API Key auf [console.anthropic.com](https://console.anthropic.com) erstellen, dann:
+
+```powershell
+irm https://raw.githubusercontent.com/Wimmsi82/company-os/main/install-windows.ps1 | iex
+# Im Setup: Option 2 (Anthropic API) wählen
 ```
 
 ---
 
-## Wie es funktioniert
-
-```
-Eingabe: Frage / Aufgabe
-    ↓
-Phase 1: 8 Agenten analysieren parallel
-    ↓
-Phase 2: Jeder Agent liest alle anderen, reagiert gezielt
-    ↓
-Phase 3: CEO synthetisiert → Entscheidung + Handlungsplan
-    ↓
-PDF: Grafischer Report wird erstellt und geöffnet
-```
-
-Agenten haben persistentes Gedächtnis (SQLite), gemeinsamen Unternehmenskontext und beauftragen sich gegenseitig mit Folgeaufgaben.
-
----
-
-## Raspberry Pi (Dauerbetrieb)
+## 🥧 Raspberry Pi (Dauerbetrieb)
 
 ```bash
-sudo cp company-os.service /etc/systemd/system/
-sudo systemctl enable company-os
-sudo systemctl start company-os
-sudo journalctl -u company-os -f
+curl -fsSL https://raw.githubusercontent.com/Wimmsi82/company-os/main/install-pi.sh | bash
+# Wähle API-Modus für automatischen systemd-Service
 ```
 
 Dashboard: `http://[PI-IP]:3000`
 
 ---
 
-## Neuen Agenten hinzufügen
+## 📁 Projektstruktur
 
-In `src/agents/index.js`:
-
-```js
-{
-  id: 'customer_success',
-  name: 'Customer Success',
-  systemPrompt: 'Du bist der Head of Customer Success ...'
-}
 ```
-
-Kein weiterer Code nötig.
+src/
+├── agents/
+│   ├── base.js          # Basis-Agent (Gedächtnis, Spawn, Verhandlung)
+│   ├── index.js         # Registry (Kern + dynamische Agenten)
+│   ├── specialists.js   # Tiefenspezialisierte Prompts
+│   ├── consultants.js   # McKinsey, BCG, EY, Deloitte, Roland Berger, KPMG
+│   ├── ceo.js           # CEO-Synthese + dynamische Agent-Erstellung
+│   ├── subagent.js      # Unteragenten-Mechanismus
+│   └── meta.js          # Selbstverbesserung
+├── scheduler/
+│   ├── loop.js          # Iterativer Loop + Konvergenz
+│   ├── negotiation.js   # Verhandlungsrunden
+│   ├── orchestrator.js  # Task-Queue + Metriken
+│   └── cron.js          # Autonomer Dauerbetrieb
+├── db/                  # SQLite (Gedächtnis, Tasks, Metriken)
+├── api/                 # REST-API + Dashboard
+└── pdf.js               # PDF-Export
+```
 
 ---
 
-## License
+## ⚙️ Konfiguration
 
-MIT
+```env
+CLAUDE_MODE=cli              # cli oder api
+ANTHROPIC_API_KEY=           # nur für api-Modus
+MAX_LOOP_ROUNDS=3            # Deliberations-Runden
+META_EVALUATION=true         # Selbstverbesserung
+DAILY_TOKEN_LIMIT=100000     # Token-Budget (api-Modus)
+PORT=3000                    # Dashboard-Port
+```
+
+---
+
+## 📖 Dokumentation
+
+- [INSTALL.md](INSTALL.md) — Detaillierte Installation (DE/EN/Windows)
+- [docs/FEATURES.md](docs/FEATURES.md) — Vollständiger Funktionsumfang
+- [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) — Architektur
+
+---
+
+## 🤝 Beitragen
+
+Pull Requests willkommen. Besonders gesucht: neue Agenten, neue Consultants, Übersetzungen.
+
+Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## 📄 Lizenz
+
+MIT — siehe [LICENSE](LICENSE)
+
+---
+
+<div align="center">
+
+Gebaut von einem Banker der sich Python selbst beigebracht hat.<br>
+Läuft auf einem Raspberry Pi. Kostenlos. Open Source.
+
+**[⭐ Star auf GitHub](https://github.com/Wimmsi82/company-os)**
+
+</div>
