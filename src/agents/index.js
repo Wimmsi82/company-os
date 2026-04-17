@@ -1,51 +1,21 @@
 // src/agents/index.js
-// Agenten-Registry — statische Kern-Agenten + dynamisch vom CEO erstellte
+// Agenten-Registry — Kern-Agenten mit Spezialistenprompots + dynamische + Consultants
 
 const BaseAgent = require('./base');
+const SPECIALIST_PROMPTS = require('./specialists');
+const { getConsultantAsAgent, listConsultants } = require('./consultants');
 
-// ── KERN-AGENTEN (immer aktiv) ─────────────────────────
+// ── KERN-AGENTEN ───────────────────────────────────────
 
 const CORE_AGENTS = [
-  {
-    id: 'strategy',
-    name: 'Strategie',
-    systemPrompt: `Du bist der Chief Strategy Officer. Marktpositionierung, Wettbewerbsanalyse, OKRs, strategische Prioritaeten. Du denkst in 6-18 Monaten. Direkt, sachlich, keine Floskeln. Deutsch.`,
-  },
-  {
-    id: 'finance',
-    name: 'Finanzen',
-    systemPrompt: `Du bist der CFO. P&L, Budgetplanung, Cashflow, ROI-Analysen, Finanzrisiken. Zahlenorientiert, konservativ, konkret. Deutsch.`,
-  },
-  {
-    id: 'marketing',
-    name: 'Marketing',
-    systemPrompt: `Du bist der CMO. Positionierung, Content-Strategie, Kampagnen, Zielgruppen, Kanalauswahl. Kreativ aber messbar. Deutsch.`,
-  },
-  {
-    id: 'sales',
-    name: 'Sales',
-    systemPrompt: `Du bist der VP Sales. Pipeline, Zielkunden, Pricing, Abschlussquoten. Direkt, umsetzbar, in ARR denken. Deutsch.`,
-  },
-  {
-    id: 'hr',
-    name: 'HR',
-    systemPrompt: `Du bist der CPO. Recruiting, Kultur, Kapazitaet, Leistungsentwicklung. Menschenzentriert, praktisch. Deutsch.`,
-  },
-  {
-    id: 'rd',
-    name: 'F&E',
-    systemPrompt: `Du bist der CTO. Produktentwicklung, Architektur, Tech-Debt, Zeitplanung. Praezise, technisch fundiert. Deutsch.`,
-  },
-  {
-    id: 'legal',
-    name: 'Legal',
-    systemPrompt: `Du bist General Counsel. Vertragsrecht, DSGVO, Regulatorik, Haftung. Risikobasiert, klar. Kein Rechtsanwaltsersatz. Deutsch.`,
-  },
-  {
-    id: 'ops',
-    name: 'Operations',
-    systemPrompt: `Du bist der COO. Prozessoptimierung, Qualitaet, Skalierung, operative KPIs. Prozessorientiert, messbar. Deutsch.`,
-  },
+  { id: 'strategy',  name: 'Strategie'  },
+  { id: 'finance',   name: 'Finanzen'   },
+  { id: 'marketing', name: 'Marketing'  },
+  { id: 'sales',     name: 'Sales'      },
+  { id: 'hr',        name: 'HR'         },
+  { id: 'rd',        name: 'F&E'        },
+  { id: 'legal',     name: 'Legal'      },
+  { id: 'ops',       name: 'Operations' },
 ];
 
 // ── REGISTRY AUFBAUEN ──────────────────────────────────
@@ -53,12 +23,16 @@ const CORE_AGENTS = [
 function buildRegistry() {
   const registry = {};
 
-  // 1. Kern-Agenten laden
+  // 1. Kern-Agenten mit Spezialistenprompots
   CORE_AGENTS.forEach(def => {
-    registry[def.id] = new BaseAgent(def);
+    registry[def.id] = new BaseAgent({
+      id: def.id,
+      name: def.name,
+      systemPrompt: SPECIALIST_PROMPTS[def.id],
+    });
   });
 
-  // 2. Dynamische Agenten aus DB laden
+  // 2. Dynamische Agenten aus DB
   try {
     const db = require('../db');
     const dynamic = db.getDynamicAgents();
@@ -73,11 +47,9 @@ function buildRegistry() {
     });
     if (dynamic.length > 0) {
       const log = require('../utils/log');
-      log.info(`[Agents] ${dynamic.length} dynamische Agenten geladen: ${dynamic.map(d => d.name).join(', ')}`);
+      log.info(`[Agents] ${dynamic.length} dynamische Agenten: ${dynamic.map(d => d.name).join(', ')}`);
     }
-  } catch (err) {
-    // DB noch nicht initialisiert — kein Problem beim ersten Start
-  }
+  } catch {}
 
   return registry;
 }
@@ -89,7 +61,6 @@ function getRegistry() {
   return _registry;
 }
 
-// Dynamisch hinzufügen ohne Neustart
 function addDynamicAgent(def) {
   const reg = getRegistry();
   if (!reg[def.id]) {
@@ -102,7 +73,6 @@ function addDynamicAgent(def) {
   return reg[def.id];
 }
 
-// Registry neu laden (nach CEO-Erstellung)
 function reload() {
   _registry = null;
   return getRegistry();
@@ -115,4 +85,8 @@ module.exports = {
   addDynamicAgent,
   reload,
   getCoreIds: () => CORE_AGENTS.map(a => a.id),
+
+  // Consultant-Zugang
+  getConsultant: getConsultantAsAgent,
+  listConsultants,
 };

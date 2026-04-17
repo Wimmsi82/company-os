@@ -23,6 +23,8 @@ if (!fs.existsSync(dbPath)) {
 const db = require('./src/db');
 const { generatePDF } = require('./src/pdf');
 const { runNegotiations, formatNegotiations } = require('./src/scheduler/negotiation');
+const { runIterativeLoop, MAX_ROUNDS } = require('./src/scheduler/loop');
+const { listConsultants, getConsultant } = require('./src/agents/consultants');
 const { runMetaEvaluation, getPerformanceReport } = require('./src/agents/meta');
 
 const MODE = process.env.CLAUDE_MODE ?? 'cli';
@@ -79,20 +81,28 @@ const AGENTS = [
 ];
 
 // Dynamische Agenten aus DB laden (vom CEO erstellt)
-function getActiveAgents() {
-  const active = [...AGENTS];
+function getActiveAgents(consultantIds = []) {
+  const active = AGENTS.map(a => ({
+    id: a.id,
+    name: a.name,
+    // Spezialistenprompots aus specialists.js laden
+    prompt: (() => { try { return require('./src/agents/specialists')[a.id] || a.prompt; } catch { return a.prompt; } })(),
+  }));
   try {
     const dynamic = db.getDynamicAgents();
     dynamic.forEach(row => {
       if (!active.find(a => a.id === row.id)) {
-        active.push({
-          id: row.id,
-          name: row.name,
-          prompt: row.system_prompt,
-        });
+        active.push({ id: row.id, name: row.name, prompt: row.system_prompt });
       }
     });
   } catch {}
+  // Consultants hinzufuegen wenn angegeben
+  consultantIds.forEach(cId => {
+    const c = getConsultant(cId);
+    if (c && !active.find(a => a.id === c.id)) {
+      active.push({ id: c.id, name: c.shortName, prompt: c.systemPrompt });
+    }
+  });
   return active;
 }
 
@@ -155,7 +165,7 @@ async function runOnboarding() {
 
 // ── DELIBERATION ───────────────────────────────────────
 
-async function runDeliberation(topic, skipPdf = false) {
+async function runDeliberation(topic, skipPdf = false, consultantIds = []) {
   const cycleId = db.createCycle('manual', topic);
   const globalCtxPrompt = buildGlobalContextPrompt();
   const globalCtxText = buildGlobalContext();
@@ -166,56 +176,47 @@ async function runDeliberation(topic, skipPdf = false) {
   console.log(`  Modus: ${MODE.toUpperCase()}`);
   console.log(`  Thema: "${topic}"`);
   if (globalCtxText) console.log('  Kontext: aktiv');
+  if (consultantIds.length) console.log(`  Consultants: ${consultantIds.join(', ')}`);
   console.log(SEP + '\n');
 
-  // Phase 1
-  console.log('▶ Phase 1 — Erstanalyse\n');
-  const phase1 = {};
-  for (const agent of AGENTS) {
-    process.stdout.write(`  [${agent.name.padEnd(12)}] `);
-    const deptMem = db.getMemory(agent.id);
-    const memCtx = deptMem.length
-      ? '\n\nMein Gedaechtnis:\n' + deptMem
-          .sort((a, b) => b.confidence - a.confidence)
-          .map(m => `- [${(m.confidence*100).toFixed(0)}%] ${m.key}: ${m.value}`)
-          .join('\n')
-      : '';
-    const text = callClaude(agent.prompt, `Aufgabe: ${topic}${globalCtxPrompt}${memCtx}`);
-    phase1[agent.id] = text;
-    try {
-      db.upsertMemory(agent.id, 'last_topic', topic, { confidence: 0.9 });
-      db.upsertMemory(agent.id, 'last_analysis', text.split('.')[0].slice(0, 200), { confidence: 0.7 });
-      db.logMemoryChange(agent.id, 'last_analysis', null, text.split('.')[0].slice(0, 200));
-    } catch {}
-    console.log('✓');
+  // Iterativer Loop: ersetzt Phase 1 + Phase 2
+  console.log(`\n\u25B6 Iterativer Deliberations-Loop (max ${MAX_ROUNDS} Runden)\n`);
+
+  const loopResult = await runIterativeLoop({
+    topic,
+    agents: getActiveAgents(consultantIds),
+    globalCtx: globalCtxPrompt,
+    callClaude,
+    onRoundComplete: async (round, results, agents) => {
+      console.log('\n' + SEP);
+      console.log(`\n  RUNDE ${round}\n`);
+      agents.forEach(a => {
+        if (results[a.id]) {
+          console.log(`[${a.name.toUpperCase()}]`);
+          console.log(results[a.id]);
+          console.log('');
+          try {
+            db.upsertMemory(a.id, 'last_topic', topic, { confidence: 0.9 });
+            db.upsertMemory(a.id, `round_${round}`, results[a.id].split('.')[0].slice(0, 200), { confidence: 0.7 });
+          } catch {}
+        }
+      });
+    }
+  });
+
+  const phase1 = loopResult.rounds[0] ?? {};
+  const phase2 = loopResult.finalRound ?? {};
+
+  if (loopResult.converged) {
+    console.log('\n' + SEP);
+    console.log(`\n  Konvergenz nach ${loopResult.totalRounds} Runden erreicht.`);
   }
 
-  console.log('\n' + SEP);
-  for (const agent of AGENTS) {
-    console.log(`\n[${agent.name.toUpperCase()}]`);
-    console.log(phase1[agent.id]);
-  }
-
-  // Phase 2
-  console.log('\n' + SEP);
-  console.log('\n▶ Phase 2 — Deliberation\n');
-  const phase2 = {};
-  for (const agent of AGENTS) {
-    process.stdout.write(`  [${agent.name.padEnd(12)}] `);
-    const others = AGENTS.filter(a => a.id !== agent.id)
-      .map(a => `[${a.name}]: ${phase1[a.id]}`).join('\n\n');
-    const text = callClaude(
-      agent.prompt,
-      `Aufgabe: ${topic}${globalCtxPrompt}\n\nErstanalysen:\n${others}\n\nReagiere in 2-3 Saetzen. Wo stimmst du zu, wo nicht? Nenn Abteilungen beim Namen.`
-    );
-    phase2[agent.id] = text;
-    console.log('✓');
-  }
-
-  console.log('\n' + SEP);
-  for (const agent of AGENTS) {
-    console.log(`\n[${agent.name.toUpperCase()} — Deliberation]`);
-    console.log(phase2[agent.id]);
+  if (Object.keys(loopResult.sharedKnowledge).length) {
+    console.log('\n  Geteiltes Wissen:');
+    Object.entries(loopResult.sharedKnowledge).forEach(([k, v]) => {
+      console.log(`    ${k}: ${v.slice(0, 100)}`);
+    });
   }
 
   // Phase 2b — Verhandlungsrunden zwischen Agenten
@@ -467,6 +468,20 @@ if (args[0] === '--onboarding') {
   }
   console.log('');
 
+} else if (args[0] === '--list-consultants') {
+  const list = listConsultants();
+  console.log('\n── Verfuegbare Consultants ──');
+  list.forEach(c => console.log(`  --consultant ${c.id.padEnd(15)} ${c.name}`));
+  console.log('\nVerwendung: node run.js --consultant mckinsey "Frage"');
+  console.log('');
+
+} else if (args[0] === '--consultant') {
+  // Format: node run.js --consultant mckinsey,ey "Frage"
+  const cIds = args[1].split(',').map(s => s.trim());
+  const topic = args.slice(2).join(' ');
+  if (!topic) { console.error('Frage fehlt nach Consultant-Namen'); process.exit(1); }
+  runDeliberation(topic, skipPdf, cIds).catch(console.error);
+
 } else if (args.length > 0) {
   runDeliberation(args.join(' '), skipPdf).catch(console.error);
 
@@ -481,6 +496,9 @@ Verwendung / Usage:
   node run.js --context                 Kontext anzeigen
   node run.js --set-context "key=val"   Kontext setzen
   node run.js --performance             Agent-Performance
+  node run.js --list-consultants        Verfuegbare Consultants anzeigen
+  node run.js --consultant mckinsey "Frage"  Mit McKinsey-Berater
+  node run.js --consultant mckinsey,ey "Frage"  Mehrere Consultants
 
 Modus (in .env):
   CLAUDE_MODE=cli   Claude Code CLI (kein API Key noetig)
