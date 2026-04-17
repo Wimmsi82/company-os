@@ -1,0 +1,29 @@
+# /etc/systemd/system/company-os.service
+# Installation:
+#   sudo cp company-os.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable company-os
+#   sudo systemctl start company-os
+#   sudo journalctl -u company-os -f
+
+[Unit]
+Description=Company OS — Autonomes Multi-Agent-System
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/Dev/company-os
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=company-os
+Environment=NODE_ENV=production
+
+# .env wird von dotenv geladen — Pfad muss stimmen
+EnvironmentFile=/home/admin/Dev/company-os/.env
+
+[Install]
+WantedBy=multi-user.target

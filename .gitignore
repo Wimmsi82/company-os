@@ -1,0 +1,22 @@
+# Abhängigkeiten
+node_modules/
+
+# Umgebung — enthält API Keys
+.env
+
+# Datenbank — enthält persönliche Daten
+db/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Logs
+*.log
+logs/
+
+# macOS
+.DS_Store
+
+# Temporäre Dateien
+tmp/
+*.tmp

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Company OS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+  :root {
+    --bg:#060810;--surface:#0d1117;--s2:#111620;--border:#1e2433;--bb:#2d3550;
+    --text:#c8d0e8;--dim:#5a6380;--bright:#eef0f8;
+    --accent:#4f6ef7;--green:#2dd4a0;--amber:#f59e0b;--red:#ef4444;--purple:#a78bfa;--cyan:#22d3ee;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,110,247,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(79,110,247,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  .shell{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:1.5rem}
+
+  /* HEADER */
+  header{display:flex;align-items:center;justify-content:space-between;padding-bottom:1rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem;flex-wrap:gap}
+  h1{font-size:1.5rem;font-weight:800;color:var(--bright)}h1 span{color:var(--accent)}
+  .hstats{display:flex;gap:1.25rem;align-items:center;flex-wrap:wrap}
+  .hstat{display:flex;flex-direction:column;align-items:flex-end}
+  .hstat-l{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+  .hstat-v{font-family:'DM Mono',monospace;font-size:.82rem;color:var(--green)}
+  .hstat-v.warn{color:var(--amber)}
+  .hstat-v.danger{color:var(--red)}
+
+  /* TABS */
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem}
+  .tab{font-family:'DM Mono',monospace;font-size:.68rem;padding:.6rem 1.1rem;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;position:relative}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-badge{position:absolute;top:.3rem;right:.3rem;width:6px;height:6px;border-radius:50%;background:var(--red);display:none}
+  .tab-badge.show{display:block;animation:pulse 2s infinite}
+  .view{display:none}.view.active{display:block}
+
+  /* CARDS */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1rem}
+  .card-header{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015)}
+  .card-title{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+  .card-body{padding:.85rem 1rem}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+
+  /* INPUT */
+  .run-area{display:flex;gap:.6rem;margin-bottom:.75rem}
+  input[type=text],textarea{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--bb);border-radius:7px;padding:.6rem .9rem;color:var(--bright);font-family:'DM Mono',monospace;font-size:.78rem;outline:none;transition:border-color .2s;resize:vertical}
+  input[type=text]:focus,textarea:focus{border-color:rgba(79,110,247,.5)}
+  input::placeholder,textarea::placeholder{color:var(--dim)}
+  button{background:var(--accent);color:#fff;border:none;border-radius:7px;padding:.6rem 1.1rem;font-family:'Syne',sans-serif;font-weight:700;font-size:.75rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+  button:hover{background:#6b84f9;transform:translateY(-1px)}
+  button.sec{background:rgba(255,255,255,.05);border:1px solid var(--bb);color:var(--text)}
+  button.sec:hover{background:rgba(255,255,255,.08);transform:translateY(-1px)}
+  button.danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red)}
+  button.danger:hover{background:rgba(239,68,68,.25)}
+  button.green{background:rgba(45,212,160,.15);border:1px solid rgba(45,212,160,.3);color:var(--green)}
+  button.green:hover{background:rgba(45,212,160,.25)}
+
+  /* PRESETS */
+  .presets{display:flex;gap:.4rem;flex-wrap:wrap}
+  .chip{font-family:'DM Mono',monospace;font-size:.62rem;padding:.25em .7em;border-radius:20px;border:1px solid var(--bb);color:var(--dim);cursor:pointer;transition:all .15s}
+  .chip:hover{border-color:rgba(79,110,247,.4);color:var(--accent);background:rgba(79,110,247,.06)}
+
+  /* TABLE */
+  table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:.67rem}
+  th{color:var(--dim);text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.07em}
+  td{padding:.45rem .6rem;border-bottom:1px solid rgba(30,36,51,.5);color:var(--text);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pill{display:inline-block;font-size:.54rem;padding:.15em .5em;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
+  .p-pending{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+  .p-done{background:rgba(45,212,160,.08);color:var(--green);border:1px solid rgba(45,212,160,.18)}
+  .p-running{background:rgba(79,110,247,.1);color:var(--accent);border:1px solid rgba(79,110,247,.2)}
+  .p-failed{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.18)}
+  .p-open{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+  .p-answered{background:rgba(45,212,160,.08);color:var(--green);border:1px solid rgba(45,212,160,.18)}
+  .p-dismissed{background:rgba(90,99,128,.1);color:var(--dim);border:1px solid rgba(90,99,128,.18)}
+  .p-triggered{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.2)}
+  .p-resolved{background:rgba(45,212,160,.08);color:var(--green);border:1px solid rgba(45,212,160,.18)}
+
+  /* METRICS */
+  .metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem}
+  .metric-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:7px;padding:.65rem .85rem;cursor:pointer;transition:border-color .2s}
+  .metric-card:hover{border-color:var(--bb)}
+  .metric-card.alert{border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.04)}
+  .metric-name{font-family:'DM Mono',monospace;font-size:.56rem;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem}
+  .metric-value{font-size:1.25rem;font-weight:800;color:var(--bright)}
+  .metric-card.alert .metric-value{color:var(--amber)}
+  .metric-unit{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--dim);margin-left:.2rem}
+  .metric-edit{display:none;margin-top:.5rem;gap:.3rem}
+  .metric-card.editing .metric-edit{display:flex}
+  .metric-edit input{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--bb);border-radius:4px;padding:.3rem .5rem;color:var(--bright);font-family:'DM Mono',monospace;font-size:.7rem;outline:none;min-width:0}
+  .metric-edit button{padding:.3rem .6rem;font-size:.65rem}
+
+  /* BUDGET BAR */
+  .budget-wrap{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem}
+  .budget-bar-bg{height:6px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden}
+  .budget-bar-fill{height:100%;border-radius:4px;transition:width .5s;background:var(--green)}
+  .budget-bar-fill.warn{background:var(--amber)}
+  .budget-bar-fill.danger{background:var(--red)}
+  .budget-meta{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:.62rem;color:var(--dim)}
+
+  /* BUDGET HISTORY */
+  .budget-history{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;margin-top:.75rem}
+  .bday{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:.5rem .7rem}
+  .bday-date{font-family:'DM Mono',monospace;font-size:.56rem;color:var(--dim);margin-bottom:.2rem}
+  .bday-val{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--text)}
+  .bday-cost{font-family:'DM Mono',monospace;font-size:.56rem;color:var(--dim)}
+
+  /* ESCALATION CARD */
+  .esc-card{background:var(--s2);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:1rem;margin-bottom:.75rem;position:relative}
+  .esc-card.answered{border-color:rgba(45,212,160,.2);opacity:.6}
+  .esc-card.dismissed{border-color:var(--border);opacity:.4}
+  .esc-from{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--red);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;display:flex;align-items:center;gap:.5rem}
+  .esc-from.answered{color:var(--green)}
+  .esc-question{font-size:.82rem;color:var(--bright);font-weight:600;margin-bottom:.4rem;line-height:1.4}
+  .esc-context{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--dim);line-height:1.5;margin-bottom:.75rem}
+  .esc-answer-box{display:flex;gap:.5rem;margin-top:.6rem}
+  .esc-answer-box textarea{height:60px;font-size:.72rem}
+  .esc-answer-shown{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--green);background:rgba(45,212,160,.06);border:1px solid rgba(45,212,160,.15);border-radius:5px;padding:.5rem .7rem;margin-top:.5rem}
+
+  /* FOLLOWUP */
+  .fu-card{background:var(--s2);border:1px solid rgba(167,139,250,.2);border-radius:8px;padding:.85rem 1rem;margin-bottom:.6rem}
+  .fu-card.triggered{border-color:rgba(79,110,247,.3)}
+  .fu-card.resolved{border-color:var(--border);opacity:.5}
+  .fu-condition{font-size:.82rem;color:var(--bright);margin-bottom:.3rem;line-height:1.4}
+  .fu-meta{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--dim);display:flex;gap:1rem;flex-wrap:wrap}
+
+  /* LOG */
+  .log-body{font-family:'DM Mono',monospace;font-size:.68rem;line-height:1.8;max-height:220px;overflow-y:auto;color:var(--dim)}
+  .ll{display:flex;gap:.75rem}
+  .lt{color:var(--dim);flex-shrink:0;width:55px}
+  .ls{color:var(--accent);flex-shrink:0;min-width:90px}
+  .lm{color:var(--text)}.lm.s{color:var(--green)}.lm.w{color:var(--amber)}.lm.e{color:var(--red)}
+
+  .pulse{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bb);border-radius:4px}
+  .mt{margin-top:.75rem}.empty{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--dim);padding:.5rem 0}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <h1>Company <span>OS</span></h1>
+    <div class="hstats">
+      <div class="hstat"><span class="hstat-l">Uptime</span><span class="hstat-v" id="hUptime">–</span></div>
+      <div class="hstat"><span class="hstat-l">Tokens heute</span><span class="hstat-v" id="hTokens">–</span></div>
+      <div class="hstat"><span class="hstat-l">Kosten heute</span><span class="hstat-v" id="hCost">–</span></div>
+      <div class="hstat"><span class="hstat-l">Eskalationen</span><span class="hstat-v" id="hEscalations">–</span></div>
+      <span style="font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(45,212,160,.1);border:1px solid rgba(45,212,160,.25);color:var(--green);padding:.25em .7em;border-radius:4px"><span class="pulse"></span>Autonom</span>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="showView('run',this)">Aufgabe</div>
+    <div class="tab" onclick="showView('escalations',this)">Inbox <span class="tab-badge" id="escBadge"></span></div>
+    <div class="tab" onclick="showView('tasks',this)">Tasks</div>
+    <div class="tab" onclick="showView('followups',this)">Follow-ups</div>
+    <div class="tab" onclick="showView('metrics',this)">Metriken</div>
+    <div class="tab" onclick="showView('memory',this)">Gedächtnis</div>
+    <div class="tab" onclick="showView('messages',this)">Nachrichten</div>
+    <div class="tab" onclick="showView('budget',this)">Budget</div>
+    <div class="tab" onclick="showView('cycles',this)">Zyklen</div>
+  </div>
+
+  <!-- ── RUN ── -->
+  <div class="view active" id="view-run">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Neue Aufgabe / Deliberation</span></div>
+      <div class="card-body">
+        <div class="run-area">
+          <input type="text" id="topicInput" placeholder="z.B. Sollen wir in den DACH-Markt expandieren?" />
+          <button onclick="runDeliberation()">▶ Starten</button>
+          <button class="sec" onclick="processQueue()">⚙ Queue</button>
+        </div>
+        <div class="presets">
+          <span class="chip" onclick="setTopic(this)">Preise erhöhen?</span>
+          <span class="chip" onclick="setTopic(this)">Remote-first einführen</span>
+          <span class="chip" onclick="setTopic(this)">Neues Produkt launchen</span>
+          <span class="chip" onclick="setTopic(this)">KI in alle Prozesse</span>
+          <span class="chip" onclick="setTopic(this)">Investoren-Pitch vorbereiten</span>
+          <span class="chip" onclick="setTopic(this)">Kostenstruktur analysieren</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title"><span class="pulse"></span>Log</span></div>
+      <div class="card-body"><div class="log-body" id="logBody"></div></div>
+    </div>
+  </div>
+
+  <!-- ── ESKALATIONS-INBOX ── -->
+  <div class="view" id="view-escalations">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Eskalations-Inbox</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadEscalations()">↺</button>
+      </div>
+      <div class="card-body" id="escBody"><div class="empty">Lade …</div></div>
+    </div>
+  </div>
+
+  <!-- ── TASKS ── -->
+  <div class="view" id="view-tasks">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Task-Queue</span>
+        <div style="display:flex;gap:.4rem">
+          <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadTasks()">↺</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Von</th><th>An</th><th>Titel</th><th>Typ</th><th>Prio</th><th>Status</th><th>Erstellt</th></tr></thead>
+          <tbody id="taskTable"><tr><td colspan="7" class="empty">Lade …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Task manuell erstellen</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+          <input type="text" id="tTo" placeholder="An (dept)" />
+          <input type="text" id="tTitle" placeholder="Titel" />
+        </div>
+        <div class="run-area">
+          <textarea id="tBody" placeholder="Vollständiger Kontext …" style="height:70px"></textarea>
+          <button onclick="createTask()" style="align-self:flex-end">+ Task</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOLLOW-UPS ── -->
+  <div class="view" id="view-followups">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">CEO Follow-ups</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadFollowups()">↺</button>
+      </div>
+      <div class="card-body" id="followupBody"><div class="empty">Lade …</div></div>
+    </div>
+  </div>
+
+  <!-- ── METRIKEN ── -->
+  <div class="view" id="view-metrics">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Metriken — klicken zum Bearbeiten</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadMetrics()">↺</button>
+      </div>
+      <div class="card-body">
+        <div class="metrics-grid" id="metricsGrid"><div class="empty">Lade …</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GEDÄCHTNIS ── -->
+  <div class="view" id="view-memory">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Agent-Gedächtnis</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadMemory()">↺</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Abt.</th><th>Key</th><th>Wert</th><th>Conf.</th><th>Aktualisiert</th></tr></thead>
+          <tbody id="memTable"><tr><td colspan="5" class="empty">Lade …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NACHRICHTEN ── -->
+  <div class="view" id="view-messages">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Nachrichten-Bus</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadMessages()">↺</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Von</th><th>An</th><th>Betreff</th><th>Gelesen</th><th>Zeit</th></tr></thead>
+          <tbody id="msgTable"><tr><td colspan="5" class="empty">Lade …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BUDGET ── -->
+  <div class="view" id="view-budget">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Token-Budget</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadBudget()">↺</button>
+      </div>
+      <div class="card-body">
+        <div class="budget-wrap" id="budgetBar">Lade …</div>
+        <div class="budget-history" id="budgetHistory"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ZYKLEN ── -->
+  <div class="view" id="view-cycles">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Orchestrations-Zyklen</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadCycles()">↺</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Trigger</th><th>Detail</th><th>Status</th><th>Token</th><th>Gestartet</th><th>Dauer</th></tr></thead>
+          <tbody id="cycleTable"><tr><td colspan="6" class="empty">Lade …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const B = '/api';
+
+// ── NAVIGATION ─────────────────────────────────────────
+
+function showView(id, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  el.classList.add('active');
+  const loaders = { escalations: loadEscalations, tasks: loadTasks, followups: loadFollowups, metrics: loadMetrics, memory: loadMemory, messages: loadMessages, budget: loadBudget, cycles: loadCycles };
+  if (loaders[id]) loaders[id]();
+}
+
+// ── LOG ────────────────────────────────────────────────
+
+function addLog(src, msg, type = '') {
+  const log = document.getElementById('logBody');
+  const t = new Date().toTimeString().slice(0, 5);
+  const line = document.createElement('div');
+  line.className = 'll';
+  line.innerHTML = `<span class="lt">${t}</span><span class="ls">${src}</span><span class="lm ${type}">${msg}</span>`;
+  log.prepend(line);
+}
+
+// ── HELPERS ────────────────────────────────────────────
+
+function ts(iso) { return iso ? iso.slice(0,16).replace('T',' ') : '–'; }
+function ago(iso) {
+  if (!iso) return '–';
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s/60)}m`;
+  return `${Math.floor(s/3600)}h`;
+}
+function dur(a, b) {
+  if (!a || !b) return '–';
+  const s = Math.floor((new Date(b) - new Date(a)) / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s/60)}m${s%60}s`;
+}
+function setTopic(el) { document.getElementById('topicInput').value = el.textContent; }
+
+// ── STATUS ─────────────────────────────────────────────
+
+async function loadStatus() {
+  const d = await fetch(`${B}/status`).then(r => r.json()).catch(() => null);
+  if (!d) return;
+  document.getElementById('hUptime').textContent = `${Math.floor(d.uptime/60)}m`;
+  const b = d.budget;
+  const pct = b.pct;
+  const tokEl = document.getElementById('hTokens');
+  tokEl.textContent = `${b.tokens_used.toLocaleString()} / ${b.tokens_limit.toLocaleString()} (${pct}%)`;
+  tokEl.className = 'hstat-v' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
+  document.getElementById('hCost').textContent = `$${b.cost_usd.toFixed(4)}`;
+  const escEl = document.getElementById('hEscalations');
+  escEl.textContent = d.open_escalations;
+  escEl.className = 'hstat-v' + (d.open_escalations > 0 ? ' danger' : '');
+  document.getElementById('escBadge').classList.toggle('show', d.open_escalations > 0);
+}
+
+// ── RUN ────────────────────────────────────────────────
+
+async function runDeliberation() {
+  const topic = document.getElementById('topicInput').value.trim();
+  if (!topic) return;
+  addLog('UI', `Deliberation: "${topic}"`, 'w');
+  await fetch(`${B}/run`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ topic }) });
+  addLog('UI', 'Läuft im Hintergrund …');
+}
+
+async function processQueue() {
+  addLog('UI', 'Queue-Lauf …', 'w');
+  await fetch(`${B}/process`, { method: 'POST' });
+  setTimeout(() => { loadTasks(); loadStatus(); }, 3000);
+}
+
+// ── ESKALATIONEN ───────────────────────────────────────
+
+async function loadEscalations() {
+  const data = await fetch(`${B}/escalations`).then(r => r.json()).catch(() => []);
+  const body = document.getElementById('escBody');
+
+  if (!data.length) { body.innerHTML = '<div class="empty">Keine Eskalationen.</div>'; return; }
+
+  body.innerHTML = data.map(e => {
+    const isOpen = e.status === 'open';
+    return `
+    <div class="esc-card ${e.status !== 'open' ? e.status : ''}" id="esc-${e.id}">
+      <div class="esc-from ${e.status !== 'open' ? 'answered' : ''}">
+        <span class="pill p-${e.status}">${e.status}</span>
+        ${e.from_dept.toUpperCase()} · ${ago(e.created_at)} ago
+      </div>
+      <div class="esc-question">${e.question}</div>
+      ${e.context ? `<div class="esc-context">${e.context}</div>` : ''}
+      ${isOpen ? `
+        <div class="esc-answer-box">
+          <textarea id="ans-${e.id}" placeholder="Deine Antwort …"></textarea>
+          <div style="display:flex;flex-direction:column;gap:.35rem">
+            <button class="green" onclick="answerEsc('${e.id}')">✓ Antworten</button>
+            <button class="danger" onclick="dismissEsc('${e.id}')">✕ Ablehnen</button>
+          </div>
+        </div>
+      ` : ''}
+      ${e.answer ? `<div class="esc-answer-shown">Antwort: ${e.answer}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function answerEsc(id) {
+  const answer = document.getElementById('ans-' + id)?.value.trim();
+  if (!answer) return;
+  await fetch(`${B}/escalations/${id}/answer`, {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ answer })
+  });
+  addLog('INBOX', 'Eskalation beantwortet.', 's');
+  loadEscalations(); loadStatus();
+}
+
+async function dismissEsc(id) {
+  await fetch(`${B}/escalations/${id}/dismiss`, { method: 'POST' });
+  addLog('INBOX', 'Eskalation abgelehnt.');
+  loadEscalations(); loadStatus();
+}
+
+// ── TASKS ──────────────────────────────────────────────
+
+async function loadTasks() {
+  const data = await fetch(`${B}/tasks`).then(r => r.json()).catch(() => []);
+  const tb = document.getElementById('taskTable');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">Keine Tasks.</td></tr>'; return; }
+  tb.innerHTML = data.map(t => `
+    <tr>
+      <td>${t.from_dept}</td>
+      <td>${t.to_dept}</td>
+      <td style="max-width:220px">${t.title.slice(0,80)}</td>
+      <td>${t.type}</td>
+      <td>${t.priority}</td>
+      <td><span class="pill p-${t.status}">${t.status}</span></td>
+      <td>${ago(t.created_at)}</td>
+    </tr>`).join('');
+}
+
+async function createTask() {
+  const to_dept = document.getElementById('tTo').value.trim();
+  const title = document.getElementById('tTitle').value.trim();
+  const body = document.getElementById('tBody').value.trim();
+  if (!to_dept || !title || !body) return;
+  await fetch(`${B}/tasks`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ to_dept, title, body }) });
+  addLog('UI', `Task erstellt → ${to_dept}: ${title}`, 's');
+  document.getElementById('tTo').value = '';
+  document.getElementById('tTitle').value = '';
+  document.getElementById('tBody').value = '';
+  loadTasks();
+}
+
+// ── FOLLOW-UPS ─────────────────────────────────────────
+
+async function loadFollowups() {
+  const data = await fetch(`${B}/followups`).then(r => r.json()).catch(() => []);
+  const body = document.getElementById('followupBody');
+  if (!data.length) { body.innerHTML = '<div class="empty">Keine Follow-ups.</div>'; return; }
+  body.innerHTML = data.map(f => `
+    <div class="fu-card ${f.status}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <div class="fu-condition">${f.condition}</div>
+        <span class="pill p-${f.status}">${f.status}</span>
+      </div>
+      <div class="fu-meta mt">
+        <span>Prüfen: ${ts(f.check_after)}</span>
+        <span>Erstellt: ${ts(f.created_at)}</span>
+        ${f.resolution ? `<span>Ergebnis: ${f.resolution}</span>` : ''}
+      </div>
+      ${f.status === 'pending' || f.status === 'triggered' ? `
+        <div style="margin-top:.6rem">
+          <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="resolveFollowup('${f.id}')">✓ Manuell schließen</button>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+async function resolveFollowup(id) {
+  await fetch(`${B}/followups/${id}/resolve`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ resolution: 'Manuell geschlossen' }) });
+  loadFollowups();
+}
+
+// ── METRIKEN ───────────────────────────────────────────
+
+async function loadMetrics() {
+  const data = await fetch(`${B}/metrics`).then(r => r.json()).catch(() => []);
+  const grid = document.getElementById('metricsGrid');
+  if (!data.length) { grid.innerHTML = '<div class="empty">Keine Metriken.</div>'; return; }
+  grid.innerHTML = data.map(m => {
+    const isAlert = (m.threshold_low != null && m.value < m.threshold_low) ||
+                    (m.threshold_high != null && m.value > m.threshold_high);
+    return `
+    <div class="metric-card ${isAlert ? 'alert' : ''}" onclick="this.classList.toggle('editing')">
+      <div class="metric-name">${m.name.replace(/_/g,' ')}</div>
+      <div><span class="metric-value">${m.value ?? '–'}</span><span class="metric-unit">${m.unit ?? ''}</span></div>
+      <div class="metric-edit">
+        <input id="mv-${m.name}" type="number" value="${m.value ?? 0}" step="any" />
+        <button onclick="event.stopPropagation();saveMetric('${m.name}')">✓</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function saveMetric(name) {
+  const val = document.getElementById('mv-' + name)?.value;
+  if (val === undefined) return;
+  await fetch(`${B}/metrics/${name}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ value: parseFloat(val) }) });
+  addLog('UI', `Metrik ${name} = ${val}`, 's');
+  loadMetrics(); loadStatus();
+}
+
+// ── GEDÄCHTNIS ─────────────────────────────────────────
+
+async function loadMemory() {
+  const data = await fetch(`${B}/memory`).then(r => r.json()).catch(() => []);
+  const tb = document.getElementById('memTable');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">Kein Gedächtnis.</td></tr>'; return; }
+  tb.innerHTML = data.map(m => `
+    <tr>
+      <td>${m.dept}</td>
+      <td style="color:var(--accent)">${m.key}</td>
+      <td style="max-width:260px;word-break:break-word">${String(m.value).slice(0,120)}</td>
+      <td>${Math.round(m.confidence * 100)}%</td>
+      <td>${ago(m.updated_at)}</td>
+    </tr>`).join('');
+}
+
+// ── NACHRICHTEN ────────────────────────────────────────
+
+async function loadMessages() {
+  const data = await fetch(`${B}/messages`).then(r => r.json()).catch(() => []);
+  const tb = document.getElementById('msgTable');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">Keine Nachrichten.</td></tr>'; return; }
+  tb.innerHTML = data.map(m => `
+    <tr style="${!m.read ? 'color:var(--bright)' : ''}">
+      <td>${m.from_dept}</td>
+      <td>${m.to_dept}</td>
+      <td style="max-width:240px">${m.subject.slice(0,80)}</td>
+      <td>${m.read ? '✓' : '<span style="color:var(--amber)">●</span>'}</td>
+      <td>${ago(m.created_at)}</td>
+    </tr>`).join('');
+}
+
+// ── BUDGET ─────────────────────────────────────────────
+
+async function loadBudget() {
+  const data = await fetch(`${B}/budget`).then(r => r.json()).catch(() => null);
+  if (!data) return;
+  const t = data.today;
+  const pct = Math.min(100, Math.round((t.tokens_used / t.tokens_limit) * 100));
+  const cls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
+  document.getElementById('budgetBar').innerHTML = `
+    <div class="budget-meta">
+      <span>${t.tokens_used.toLocaleString()} / ${t.tokens_limit.toLocaleString()} Tokens</span>
+      <span>~$${t.cost_usd.toFixed(4)} heute</span>
+    </div>
+    <div class="budget-bar-bg"><div class="budget-bar-fill ${cls}" style="width:${pct}%"></div></div>
+    <div class="budget-meta"><span>${pct}% verbraucht</span><span>Limit via DAILY_TOKEN_LIMIT in .env</span></div>`;
+  document.getElementById('budgetHistory').innerHTML = data.history.map(d => `
+    <div class="bday">
+      <div class="bday-date">${d.date}</div>
+      <div class="bday-val">${d.tokens_used.toLocaleString()} Tok</div>
+      <div class="bday-cost">~$${d.cost_usd.toFixed(4)}</div>
+    </div>`).join('');
+}
+
+// ── ZYKLEN ─────────────────────────────────────────────
+
+async function loadCycles() {
+  const data = await fetch(`${B}/cycles`).then(r => r.json()).catch(() => []);
+  const tb = document.getElementById('cycleTable');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">Keine Zyklen.</td></tr>'; return; }
+  tb.innerHTML = data.map(c => `
+    <tr>
+      <td>${c.trigger}</td>
+      <td style="max-width:180px">${(c.trigger_detail ?? '').slice(0,60)}</td>
+      <td><span class="pill p-${c.status}">${c.status}</span></td>
+      <td>${c.token_used?.toLocaleString() ?? '–'}</td>
+      <td>${ts(c.started_at)}</td>
+      <td>${dur(c.started_at, c.done_at)}</td>
+    </tr>`).join('');
+}
+
+// ── INIT ───────────────────────────────────────────────
+
+loadStatus();
+setInterval(() => { loadStatus(); }, 30000);
+
+addLog('SYSTEM', 'Dashboard v2 verbunden.', 's');
+</script>
+</body>
+</html>

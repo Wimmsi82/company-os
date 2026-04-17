@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read:*",
+      "Bash:git:*",
+      "Bash:npm:*",
+      "Bash:node:*",
+      "Write:src/*",
+      "Write:docs/*",
+      "Write:*.md",
+      "Write:*.json"
+    ],
+    "deny": [
+      "Read:.env*",
+      "Bash:sudo rm:*",
+      "Bash:rm -rf:*",
+      "Bash:curl * | bash:*"
+    ]
+  }
+}
