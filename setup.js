@@ -41,14 +41,31 @@ async function main() {
   if (mode === 'cli') {
     console.log('\n✓ Modus: Claude Code CLI\n');
 
-    // Prüfen ob claude verfügbar ist
+    const isWin = process.platform === 'win32';
+
+    // Claude Code prüfen
     try {
-      execSync('which claude', { stdio: 'pipe' });
-      console.log('✓ Claude Code gefunden.\n');
+      execSync(isWin ? 'where claude' : 'which claude', { stdio: 'pipe' });
+      console.log('✓ Claude Code gefunden.');
     } catch {
       console.log('⚠ Claude Code nicht gefunden.');
-      console.log('  Installieren: https://claude.ai/code\n');
+      console.log('  Installieren: https://claude.ai/code');
     }
+
+    // Windows-spezifische Hinweise
+    if (isWin) {
+      console.log('');
+      console.log('Windows erkannt. Empfehlung:');
+      try {
+        execSync('wsl echo ok', { stdio: 'pipe', timeout: 3000 });
+        console.log('✓ WSL2 verfuegbar — wird bevorzugt genutzt.');
+      } catch {
+        console.log('⚠ WSL2 nicht verfuegbar.');
+        console.log('  Fuer beste Kompatibilitaet: WSL2 aktivieren und Claude Code dort installieren.');
+        console.log('  Alternativ: CLAUDE_MODE=api in .env setzen.');
+      }
+    }
+    console.log('');
 
   } else {
     console.log('\n✓ Modus: Anthropic API\n');

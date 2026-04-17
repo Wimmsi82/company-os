@@ -114,7 +114,116 @@ sudo journalctl -u company-os -f
 http://[PI-IP]:3000
 ```
 
-### Troubleshooting
+#
+---
+
+## WINDOWS
+
+### Voraussetzungen
+
+- Node.js 18 oder neuer (https://nodejs.org)
+- Eines der folgenden:
+  - **WSL2 + Claude Code** (empfohlen)
+  - **Claude Code nativ** (Windows-Version)
+  - **Anthropic API Key** (einfachste Option)
+
+### Option A — WSL2 (empfohlen)
+
+WSL2 bietet die beste Kompatibilitaet da Company OS intern Linux-Befehle nutzt.
+
+```powershell
+# WSL2 aktivieren (als Administrator)
+wsl --install
+
+# Dann in WSL2 Terminal:
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+npm install -g @anthropic-ai/claude-code
+claude auth login
+```
+
+Danach laeuft Company OS identisch wie auf Mac/Linux.
+
+### Option B — Claude Code nativ + PowerShell
+
+Claude Code fuer Windows installieren: https://claude.ai/code
+
+Company OS erkennt Windows automatisch und nutzt PowerShell fuer den CLI-Aufruf:
+
+```powershell
+git clone https://github.com/Wimmsi82/company-os.git
+cd company-os
+npm install
+npm run setup
+node run.js "Deine erste Frage"
+```
+
+### Option C — API-Modus (einfachste Option)
+
+Laeuft auf Windows ohne WSL2 oder Claude Code:
+
+```powershell
+git clone https://github.com/Wimmsi82/company-os.git
+cd company-os
+npm install
+npm run setup
+# Im Setup: Option 2 (Anthropic API) waehlen
+node run.js "Deine erste Frage"
+```
+
+### Troubleshooting Windows
+
+| Problem | Loesung |
+|---------|---------|
+| `claude: command not found` | Claude Code installieren oder WSL2 nutzen |
+| PowerShell-Execution-Policy | `Set-ExecutionPolicy RemoteSigned` als Admin |
+| Pfad-Probleme mit SQLite | Projekt in WSL2 anlegen statt Windows-Dateisystem |
+| PDF oeffnet nicht | Puppeteer-Pfade auf Windows anders — `--no-pdf` Flag nutzen |
+
+---
+
+## WINDOWS (ENGLISH)
+
+### Prerequisites
+
+- Node.js 18 or higher (https://nodejs.org)
+- One of the following:
+  - **WSL2 + Claude Code** (recommended)
+  - **Claude Code native** (Windows version)
+  - **Anthropic API Key** (simplest option)
+
+### Option A — WSL2 (recommended)
+
+```powershell
+# Enable WSL2 (as Administrator)
+wsl --install
+
+# Then in WSL2 terminal:
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+npm install -g @anthropic-ai/claude-code
+claude auth login
+```
+
+### Option B — Native Claude Code + PowerShell
+
+Install Claude Code for Windows: https://claude.ai/code
+
+Company OS auto-detects Windows and uses PowerShell for CLI calls.
+
+### Option C — API Mode (simplest)
+
+No WSL2 or Claude Code required:
+
+```powershell
+npm run setup
+# Choose option 2 (Anthropic API) in setup
+```
+
+
+---
+
+## Troubleshooting
 
 | Problem | Lösung |
 |---------|--------|

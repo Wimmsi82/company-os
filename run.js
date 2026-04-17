@@ -28,10 +28,38 @@ const { listConsultants, getConsultant } = require('./src/agents/consultants');
 const { runMetaEvaluation, getPerformanceReport } = require('./src/agents/meta');
 
 const MODE = process.env.CLAUDE_MODE ?? 'cli';
+const IS_WIN = process.platform === 'win32';
+
+// ── PLATTFORM-DETECTION ────────────────────────────────
+
+function detectPlatform() {
+  if (IS_WIN) return 'windows';
+  if (process.platform === 'darwin') return 'mac';
+  return 'linux';
+}
+
+// Prueft ob WSL2 verfuegbar ist (Windows only)
+function hasWSL() {
+  if (!IS_WIN) return false;
+  try {
+    execSync('wsl echo ok', { encoding: 'utf8', timeout: 3000 });
+    return true;
+  } catch { return false; }
+}
+
+// Prueft ob claude CLI verfuegbar ist
+function hasClaudeCLI() {
+  try {
+    execSync(IS_WIN ? 'where claude' : 'which claude', { encoding: 'utf8', timeout: 3000 });
+    return true;
+  } catch { return false; }
+}
 
 // ── CLAUDE WRAPPER ─────────────────────────────────────
 
 function callClaude(system, userMessage) {
+
+  // ── API-Modus (plattformunabhaengig) ──────────────────
   if (MODE === 'api') {
     const script = `
       require('dotenv').config();
@@ -55,8 +83,55 @@ function callClaude(system, userMessage) {
     }
   }
 
-  // CLI-Modus — stdin pipe (funktioniert mit Claude Code Max-Plan)
+  // ── CLI-Modus ─────────────────────────────────────────
   const cliInput = system + '\n\n---\n\n' + userMessage;
+
+  // Windows: WSL2 bevorzugen, dann native claude.exe, dann Fallback
+  if (IS_WIN) {
+    // Option 1: WSL2 verfuegbar
+    if (hasWSL()) {
+      const tmpFile = path.join(os.tmpdir(), `cos-wsl-${Date.now()}.txt`);
+      fs.writeFileSync(tmpFile, cliInput, 'utf8');
+      // WSL-Pfad konvertieren
+      const wslPath = tmpFile.replace(/\\/g, '/').replace(/^([A-Z]):/, (_, d) => `/mnt/${d.toLowerCase()}`);
+      try {
+        return execSync(
+          `wsl bash -c "cat '${wslPath}' | claude -p --output-format text"`,
+          { encoding: 'utf8', timeout: 120000, cwd: __dirname }
+        ).trim() || 'Keine Antwort.';
+      } catch (err) {
+        return err.stdout?.trim() || `Fehler: ${err.message.slice(0, 100)}`;
+      } finally {
+        try { fs.unlinkSync(tmpFile); } catch {}
+      }
+    }
+
+    // Option 2: Claude CLI nativ auf Windows (PowerShell)
+    if (hasClaudeCLI()) {
+      const tmpFile = path.join(os.tmpdir(), `cos-win-${Date.now()}.txt`);
+      fs.writeFileSync(tmpFile, cliInput, 'utf8');
+      try {
+        return execSync(
+          `powershell -Command "Get-Content '${tmpFile}' | claude -p --output-format text"`,
+          { encoding: 'utf8', timeout: 120000, cwd: __dirname }
+        ).trim() || 'Keine Antwort.';
+      } catch (err) {
+        return err.stdout?.trim() || `Fehler: ${err.message.slice(0, 100)}`;
+      } finally {
+        try { fs.unlinkSync(tmpFile); } catch {}
+      }
+    }
+
+    // Kein Claude gefunden
+    console.error('\nFehler: Claude Code nicht gefunden.');
+    console.error('Optionen:');
+    console.error('  1. Claude Code installieren: https://claude.ai/code');
+    console.error('  2. WSL2 aktivieren und Claude Code dort installieren');
+    console.error('  3. API-Modus nutzen: CLAUDE_MODE=api in .env');
+    return 'Fehler: Claude Code nicht verfuegbar.';
+  }
+
+  // Mac/Linux: stdin pipe
   try {
     return execSync(
       'claude -p --output-format text',
