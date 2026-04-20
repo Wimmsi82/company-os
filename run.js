@@ -442,11 +442,27 @@ Aktive Abteilungen: ${existingIds}
 Antworte im JSON-Format:
 {
   "decision": "ja|nein|bedingt",
-  "decision_text": "klare Formulierung",
-  "reasoning": "Begruendung",
-  "action_items": [{"owner": "abteilung", "action": "Aufgabe", "deadline_days": 7}],
-  "main_risk": "Hauptrisiko",
+  "decision_text": "klare Formulierung der Entscheidung — eine Richtung",
+  "reasoning": "Was hat den Ausschlag gegeben? Welche Analysen waren stark, welche schwach?",
+  "action_items": [{"owner": "abteilung", "action": "konkrete Aufgabe", "deadline_days": 7}],
+  "main_risk": "Hauptrisiko in einem Satz",
   "risk_mitigation": "Gegenmassnahme",
+  "swot": {
+    "strengths": ["interne Staerke 1", "interne Staerke 2"],
+    "weaknesses": ["interne Schwaeche 1", "interne Schwaeche 2"],
+    "opportunities": ["externe Chance 1", "externe Chance 2"],
+    "threats": ["externe Bedrohung 1", "externe Bedrohung 2"]
+  },
+  "agent_positions": {
+    "strategy": "pro|neutral|contra",
+    "finance": "pro|neutral|contra",
+    "marketing": "pro|neutral|contra",
+    "sales": "pro|neutral|contra",
+    "hr": "pro|neutral|contra",
+    "rd": "pro|neutral|contra",
+    "legal": "pro|neutral|contra",
+    "ops": "pro|neutral|contra"
+  },
   "missing_perspectives": [
     {
       "id": "slug_ohne_leerzeichen",
@@ -456,7 +472,9 @@ Antworte im JSON-Format:
     }
   ]
 }
-Nur bei echten Luecken neue Agenten vorschlagen. Max 2. missing_perspectives = [] wenn nichts fehlt. Nur JSON.`;
+Nur bei echten Luecken neue Agenten vorschlagen. Max 2. missing_perspectives = [] wenn nichts fehlt.
+agent_positions: basiere auf den tatsaechlichen Aussagen der Abteilungen in Phase 1 und 2.
+swot: bezogen auf die konkrete Fragestellung, nicht allgemein. Nur JSON.`;
 
   const negCtx = formatNegotiations(negotiations);
   const rawDecision = callClaude(
@@ -572,6 +590,7 @@ Nur bei echten Luecken neue Agenten vorschlagen. Max 2. missing_perspectives = [
         phase1,
         phase2,
         decision,
+        ceoResult,
         timestamp: new Date().toISOString(),
         globalCtx: globalCtxText,
       });

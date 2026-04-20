@@ -1,5 +1,15 @@
 # CHANGELOG — Company OS
 
+## [2026-04-20] — v8 Protokoll-PDF + Agenten-Persönlichkeiten
+
+- Geändert: `src/pdf.js` — komplettes Redesign als Protokoll: SWOT-Analyse (2×2-Grid), Positionsmatrix (Haltung jeder Abteilung), nummerierte Handlungsempfehlungen, Entscheidungs-Badge (JA/NEIN/BEDINGT), strukturiertes Layout mit 7 Abschnitten
+- Geändert: `src/agents/ceo.js` — CEO-JSON um `swot` + `agent_positions` erweitert
+- Geändert: `run.js` — CEO-Prompt um SWOT/Positionsfelder erweitert, `ceoResult` an generatePDF übergeben
+- Geändert: `src/agents/specialists.js` — alle 8 Agenten haben jetzt Namen (Marcus, Michael, Lena, Sandra, Sarah, Jan, Claudia, Elena), prägende Erfahrungen, bekannte Biases, Spannungsverhältnisse zu Kollegen und Lieblingsphrasen
+- Geändert: `src/agents/ceo.js` (Persona) — Thomas, CEO mit Backstory (eine gescheiterte, eine verkaufte Firma)
+- Fußnote in PDF: "Ohne Gewähr auf Richtigkeit. Dieses Protokoll wurde vollständig durch KI-Agenten erstellt und ersetzt keine professionelle Beratung."
+- User-Impact: PDF ist jetzt ein echtes Entscheidungsprotokoll mit visualisierter Konsenslage; Agenten haben distinkte Persönlichkeiten mit vorhersehbaren Biases und Spannungslinien
+
 ## [2026-04-20] — v6 Telegram + RAG + Dashboard
 
 - Erstellt: `src/notifications/telegram.js` — Push-Notifications via Telegram Bot API (non-blocking)
