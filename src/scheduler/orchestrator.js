@@ -2,11 +2,13 @@
 // Kern des autonomen Systems — steuert alle Phasen und den Task-Queue-Loop
 // v2: Vault-Integration (Input + Output)
 
-const agentRegistry = require('../agents');
-const ceo = require('../agents/ceo');
-const db = require('../db');
-const log = require('../utils/log');
-const vault = require('../vault');
+const agentRegistry  = require('../agents');
+const ceo            = require('../agents/ceo');
+const db             = require('../db');
+const log            = require('../utils/log');
+const vault          = require('../vault');
+const notify         = require('../notifications/telegram');
+const vaultSearch    = require('../vault/search');
 
 // ── DYNAMISCHES PULSE-THEMA ────────────────────────────
 
@@ -67,8 +69,19 @@ async function runDeliberation(topic, trigger = 'manual', projectId = null) {
     log.info('[Orchestrator] Vault-Kontext geladen.');
   }
 
+  // Cycle-History RAG: relevante vergangene Deliberationen laden
+  const historyCtx = vaultSearch.searchCycleHistory(topic);
+  if (historyCtx) {
+    log.info('[Orchestrator] Cycle-History geladen (RAG).');
+  }
+
   // Topic mit allen Kontexten anreichern
-  const enrichedTopic = [topic, vaultContext, projectCtx].filter(Boolean).join('');
+  const enrichedTopic = [
+    topic,
+    vaultContext,
+    projectCtx,
+    historyCtx ? `\n\n=== RELEVANTE VERGANGENHEIT ===\n${historyCtx}` : '',
+  ].filter(Boolean).join('');
 
   const allAgents = agentRegistry.list();
   const phase1 = {};
@@ -209,6 +222,9 @@ async function checkMetrics() {
 
     if (criticalRatio > 2.0 && metric.value !== 0) {
       log.warn(`[Orchestrator] KRITISCH: ${metric.name} (Ratio ${criticalRatio.toFixed(1)}x) — Sofort-Deliberation`);
+      notify.send(
+        `⚠️ *Kritische Metrik: ${metric.name}*\n\nWert: ${metric.value} ${metric.unit ?? ''}\nSchwellenwert: ${threshold}\nAbweichung: ${criticalRatio.toFixed(1)}x\n\n_Sofort-Deliberation gestartet_`
+      ).catch(() => {});
       try {
         await runDeliberation(
           `KRITISCHER ALERT: Metrik "${metric.name}" bei ${metric.value} ${metric.unit ?? ''} — Schwellenwert ${threshold}. Das ist ${criticalRatio.toFixed(1)}x ausserhalb des Normalbereichs. Sofortmassnahmen erforderlich. Alle Abteilungen: Was tun wir jetzt?`,

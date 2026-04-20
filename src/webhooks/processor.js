@@ -1,9 +1,10 @@
 // src/webhooks/processor.js
 // Verarbeitet eingehende Webhook-Events und routet sie zu Tasks oder Deliberationen
 
-const crypto = require('crypto');
-const db     = require('../db');
-const log    = require('../utils/log');
+const crypto  = require('crypto');
+const db      = require('../db');
+const log     = require('../utils/log');
+const notify  = require('../notifications/telegram');
 
 // ── ROUTING-REGELN ────────────────────────────────────────
 // deliberate: true  → volle Deliberation aller Agenten
@@ -135,6 +136,12 @@ async function processWebhookEvent(eventId, source, normalized, rule) {
       source: 'webhook',
     });
     log.warn(`[Webhook] Deliberation queued: ${source}/${eventType}`);
+    // Telegram-Alert bei kritischen Events
+    if (SEVERITY_RANK[rule.severity] >= 4) {
+      notify.send(
+        `🔔 *Webhook Alert — ${source.toUpperCase()}*\n\n${eventType}\n${summary.slice(0, 250)}\n\n_Deliberation ausgelöst_`
+      ).catch(() => {});
+    }
     db.setWebhookEventProcessed(eventId, 'deliberation');
   } else {
     // Task an zuständige Abteilung

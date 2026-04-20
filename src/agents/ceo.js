@@ -1,9 +1,10 @@
 // src/agents/ceo.js
 // CEO-Agent: Synthese + Action Items + Follow-ups + dynamische Agent-Erstellung
 
-const claude = require('../api/claude');
-const db = require('../db');
-const log = require('../utils/log');
+const claude  = require('../api/claude');
+const db      = require('../db');
+const log     = require('../utils/log');
+const notify  = require('../notifications/telegram');
 
 const CEO_SYSTEM = `Du bist der CEO. Du erhaeltst Analysen aller Abteilungen und formulierst eine klare Entscheidung. Du erkennst wenn eine wichtige Perspektive fehlt und kannst neue Abteilungen vorschlagen. Du erkennst auch wenn ein Thema eine eigene Deliberation erfordert und kannst diese fuer den naechsten Zyklus vorschlagen (max 2). Direkt, keine Floskeln. Deutsch.`;
 
@@ -132,6 +133,9 @@ Nur JSON.`;
         cycle_id: cycleId,
       });
       log.warn(`[CEO] Eskalation: ${result.escalation_question.slice(0, 60)}`);
+      notify.send(
+        `🚨 *CEO-Eskalation*\n\n${result.escalation_question.slice(0, 300)}\n\n_Thema: ${topic.slice(0, 120)}_`
+      ).catch(() => {});
     } catch {}
   }
 

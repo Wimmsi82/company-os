@@ -132,6 +132,22 @@
   .ls{color:var(--accent);flex-shrink:0;min-width:90px}
   .lm{color:var(--text)}.lm.s{color:var(--green)}.lm.w{color:var(--amber)}.lm.e{color:var(--red)}
 
+  /* PROJECTS */
+  .proj-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;margin-bottom:.65rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem}
+  .proj-card:hover{border-color:var(--bb)}
+  .proj-info{flex:1}
+  .proj-name{font-size:.9rem;font-weight:700;color:var(--bright);margin-bottom:.25rem}
+  .proj-desc{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--dim);line-height:1.5;margin-bottom:.3rem}
+  .proj-meta{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--dim);display:flex;gap:.8rem;flex-wrap:wrap}
+  .proj-actions{display:flex;flex-direction:column;gap:.3rem;flex-shrink:0}
+  .p-active{background:rgba(45,212,160,.08);color:var(--green);border:1px solid rgba(45,212,160,.18)}
+  .p-archived{background:rgba(90,99,128,.1);color:var(--dim);border:1px solid rgba(90,99,128,.18)}
+  /* WEBHOOK PILLS */
+  .p-deliberation{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+  .p-task{background:rgba(79,110,247,.1);color:var(--accent);border:1px solid rgba(79,110,247,.2)}
+  .p-ignored{background:rgba(90,99,128,.08);color:var(--dim);border:1px solid rgba(90,99,128,.15)}
+  .p-error{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.18)}
+
   .pulse{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
   ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bb);border-radius:4px}
@@ -161,6 +177,8 @@
     <div class="tab" onclick="showView('metrics',this)">Metriken</div>
     <div class="tab" onclick="showView('memory',this)">Gedächtnis</div>
     <div class="tab" onclick="showView('messages',this)">Nachrichten</div>
+    <div class="tab" onclick="showView('projects',this)">Projekte</div>
+    <div class="tab" onclick="showView('webhooks',this)">Webhooks</div>
     <div class="tab" onclick="showView('budget',this)">Budget</div>
     <div class="tab" onclick="showView('cycles',this)">Zyklen</div>
   </div>
@@ -289,6 +307,59 @@
     </div>
   </div>
 
+  <!-- ── PROJEKTE ── -->
+  <div class="view" id="view-projects">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Projekte</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadProjects()">↺</button>
+      </div>
+      <div class="card-body" id="projectsBody"><div class="empty">Lade …</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Neues Projekt</span></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+          <input type="text" id="pName" placeholder="Projektname *" />
+          <input type="text" id="pDesc" placeholder="Kurzbeschreibung" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+          <input type="text" id="pGoals" placeholder="Projektziele" />
+          <input type="text" id="pConstraints" placeholder="Constraints" />
+        </div>
+        <button onclick="createProject()">+ Projekt erstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WEBHOOKS ── -->
+  <div class="view" id="view-webhooks">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Webhook-Quellen</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadWebhooks()">↺</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Quelle</th><th>URL</th><th>Secret</th><th>Aktiv</th></tr></thead>
+          <tbody id="webhookConfigTable"><tr><td colspan="4" class="empty">Lade …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Event-Log (letzte 50)</span>
+        <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="loadWebhookEvents()">↺</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Quelle</th><th>Event</th><th>Status</th><th>Aktion</th><th>Zeit</th></tr></thead>
+          <tbody id="webhookEventTable"><tr><td colspan="5" class="empty">Lade …</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ── BUDGET ── -->
   <div class="view" id="view-budget">
     <div class="card">
@@ -331,7 +402,7 @@ function showView(id, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('view-' + id).classList.add('active');
   el.classList.add('active');
-  const loaders = { escalations: loadEscalations, tasks: loadTasks, followups: loadFollowups, metrics: loadMetrics, memory: loadMemory, messages: loadMessages, budget: loadBudget, cycles: loadCycles };
+  const loaders = { escalations: loadEscalations, tasks: loadTasks, followups: loadFollowups, metrics: loadMetrics, memory: loadMemory, messages: loadMessages, budget: loadBudget, cycles: loadCycles, projects: loadProjects, webhooks: loadWebhooks };
   if (loaders[id]) loaders[id]();
 }
 
@@ -606,12 +677,113 @@ async function loadCycles() {
     </tr>`).join('');
 }
 
+// ── PROJEKTE ───────────────────────────────────────────
+
+async function loadProjects() {
+  const data = await fetch(`${B}/projects`).then(r => r.json()).catch(() => []);
+  const body = document.getElementById('projectsBody');
+  if (!data.length) { body.innerHTML = '<div class="empty">Keine Projekte. Erstelle dein erstes Projekt unten.</div>'; return; }
+  body.innerHTML = data.map(p => `
+    <div class="proj-card">
+      <div class="proj-info">
+        <div class="proj-name">
+          <span class="pill p-${p.status ?? 'active'}" style="margin-right:.5rem">${p.status ?? 'active'}</span>
+          ${p.name}
+        </div>
+        ${p.description ? `<div class="proj-desc">${p.description}</div>` : ''}
+        <div class="proj-meta">
+          ${p.goals       ? `<span>Ziele: ${p.goals.slice(0,80)}</span>` : ''}
+          ${p.constraints ? `<span>Constraints: ${p.constraints.slice(0,60)}</span>` : ''}
+          <span>Erstellt: ${ts(p.created_at)}</span>
+        </div>
+      </div>
+      <div class="proj-actions">
+        ${p.status !== 'archived' ? `
+          <button class="sec" style="font-size:.6rem;padding:.25rem .6rem" onclick="startProjectDeliberation('${p.id}','${p.name.replace(/'/g,'')}')">▶ Deliberation</button>
+          <button class="danger" style="font-size:.6rem;padding:.25rem .6rem" onclick="archiveProject('${p.id}')">Archivieren</button>
+        ` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function createProject() {
+  const name  = document.getElementById('pName').value.trim();
+  if (!name) return;
+  const body = {
+    name,
+    description:  document.getElementById('pDesc').value.trim()        || undefined,
+    goals:        document.getElementById('pGoals').value.trim()        || undefined,
+    constraints:  document.getElementById('pConstraints').value.trim()  || undefined,
+  };
+  const res = await fetch(`${B}/projects`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (data.ok) {
+    addLog('UI', `Projekt erstellt: ${name}`, 's');
+    ['pName','pDesc','pGoals','pConstraints'].forEach(id => document.getElementById(id).value = '');
+    loadProjects();
+  } else {
+    addLog('UI', `Fehler: ${data.error}`, 'e');
+  }
+}
+
+async function startProjectDeliberation(id, name) {
+  const topic = prompt(`Deliberations-Thema für Projekt "${name}":`, `Status-Review: ${name}`);
+  if (!topic) return;
+  addLog('UI', `Deliberation für Projekt "${name}": "${topic}"`, 'w');
+  await fetch(`${B}/run`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ topic, project_id: id }) });
+  addLog('UI', 'Läuft im Hintergrund …');
+}
+
+async function archiveProject(id) {
+  if (!confirm('Projekt archivieren?')) return;
+  await fetch(`${B}/projects/${id}/archive`, { method: 'DELETE' });
+  addLog('UI', 'Projekt archiviert.');
+  loadProjects();
+}
+
+// ── WEBHOOKS ───────────────────────────────────────────
+
+async function loadWebhooks() {
+  loadWebhookConfigs();
+  loadWebhookEvents();
+}
+
+async function loadWebhookConfigs() {
+  const data = await fetch(`${B}/webhooks`).then(r => r.json()).catch(() => []);
+  const tb = document.getElementById('webhookConfigTable');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">Keine Webhook-Quellen konfiguriert.</td></tr>'; return; }
+  tb.innerHTML = data.map(w => `
+    <tr>
+      <td style="color:var(--bright);font-weight:600">${w.source}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--dim)">/api/webhooks/${w.source}</td>
+      <td>${w.secret ? '<span style="color:var(--green)">✓ gesetzt</span>' : '<span style="color:var(--dim)">–</span>'}</td>
+      <td><span class="pill p-active">aktiv</span></td>
+    </tr>`).join('');
+}
+
+async function loadWebhookEvents() {
+  const data = await fetch(`${B}/webhook-events`).then(r => r.json()).catch(() => []);
+  const tb = document.getElementById('webhookEventTable');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">Keine Events.</td></tr>'; return; }
+  tb.innerHTML = data.slice(0, 50).map(e => {
+    const actionPill = e.action ? `<span class="pill p-${e.action}">${e.action}</span>` : `<span class="pill p-${e.status}">${e.status}</span>`;
+    return `
+    <tr>
+      <td>${e.source}</td>
+      <td style="max-width:180px;font-family:'DM Mono',monospace;font-size:.62rem">${e.event_type}</td>
+      <td><span class="pill p-${e.status}">${e.status}</span></td>
+      <td>${actionPill}</td>
+      <td>${ago(e.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
 // ── INIT ───────────────────────────────────────────────
 
 loadStatus();
 setInterval(() => { loadStatus(); }, 30000);
 
-addLog('SYSTEM', 'Dashboard v2 verbunden.', 's');
+addLog('SYSTEM', 'Dashboard v3 verbunden.', 's');
 </script>
 </body>
 </html>

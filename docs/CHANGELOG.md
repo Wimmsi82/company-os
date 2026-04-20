@@ -1,5 +1,23 @@
 # CHANGELOG — Company OS
 
+## [2026-04-20] — v6 Telegram + RAG + Dashboard
+
+- Erstellt: `src/notifications/telegram.js` — Push-Notifications via Telegram Bot API (non-blocking)
+- Erstellt: `src/vault/search.js` — Keyword-Search über Vault Cycle-Logs für RAG-Kontext
+- Geändert: `src/agents/ceo.js` — Telegram-Alert nach CEO-Eskalation
+- Geändert: `src/scheduler/orchestrator.js` — Telegram bei kritischer Metrik + Cycle-History RAG in runDeliberation()
+- Geändert: `src/webhooks/processor.js` — Telegram bei Webhook-Events mit severity=critical
+- Geändert: `src/ui/index.html` — 2 neue Tabs: "Projekte" (CRUD + Deliberation-Start) und "Webhooks" (Config + Event-Log)
+- Geändert: `.env.example` — TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+- User-Impact: Kritische Events (Kündigung, Metrik-Alert, CEO-Eskalation) pushen sofort aufs Handy; Agenten lernen aus vergangenen Deliberationen; Projekte und Webhook-Events im Dashboard sichtbar
+
+Telegram-Setup:
+```
+1. @BotFather → /newbot → Token in .env
+2. @userinfobot → Chat-ID in .env
+3. Test: node -e "require('./src/notifications/telegram').send('Test ✓')"
+```
+
 ## [2026-04-20] — v5 Webhook-Trigger
 
 - Erstellt: `src/webhooks/processor.js` — Event-Routing mit Regeln für Stripe, HubSpot, Generic
