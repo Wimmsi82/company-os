@@ -5,7 +5,7 @@ const claude = require('../api/claude');
 const db = require('../db');
 const log = require('../utils/log');
 
-const CEO_SYSTEM = `Du bist der CEO. Du erhaeltst Analysen aller Abteilungen und formulierst eine klare Entscheidung. Du erkennst auch wenn eine wichtige Perspektive fehlt und kannst neue Abteilungen vorschlagen. Direkt, keine Floskeln. Deutsch.`;
+const CEO_SYSTEM = `Du bist der CEO. Du erhaeltst Analysen aller Abteilungen und formulierst eine klare Entscheidung. Du erkennst wenn eine wichtige Perspektive fehlt und kannst neue Abteilungen vorschlagen. Du erkennst auch wenn ein Thema eine eigene Deliberation erfordert und kannst diese fuer den naechsten Zyklus vorschlagen (max 2). Direkt, keine Floskeln. Deutsch.`;
 
 async function synthesize({ topic, phase1, phase2, cycleId }) {
   log.info('[CEO] Synthese startet ...');
@@ -54,6 +54,14 @@ Antworte im folgenden JSON-Format:
       "system_prompt": "Du bist [Rolle]. Deine Aufgaben: [konkret]. Antworte praezise, direkt. Deutsch.",
       "context": "Erstellt fuer Thema: ${topic}"
     }
+  ],
+  "next_topics": [
+    {
+      "topic": "Konkretes Thema das deliberiert werden soll",
+      "reason": "Warum jetzt relevant und warum nicht spaeter",
+      "priority": "high|medium|low",
+      "days_from_now": 1
+    }
   ]
 }
 
@@ -62,6 +70,11 @@ Wichtig zu missing_perspectives:
 - Maximal 2 neue Agenten pro Zyklus
 - id muss einzigartig und ein einfacher Slug sein (z.B. customer_success, sustainability, data_science)
 - Wenn keine Perspektive fehlt: leeres Array []
+
+Wichtig zu next_topics:
+- Nur wenn eine Folgefrage WIRKLICH eine eigene Deliberation braucht (nicht als Action Item loesbar)
+- Maximal 2 pro Zyklus — next_topics = [] wenn nichts Dringliches offen bleibt
+- days_from_now: 1 = morgen, 7 = naechste Woche, etc.
 
 Nur JSON.`;
 
@@ -165,13 +178,35 @@ Nur JSON.`;
     }
   });
 
+  // Nächste Deliberationsthemen in Queue einreihen
+  const queuedTopics = [];
+  (result.next_topics ?? []).slice(0, 2).forEach(t => {
+    if (!t.topic) return;
+    try {
+      const scheduledFor = new Date();
+      scheduledFor.setDate(scheduledFor.getDate() + (t.days_from_now ?? 1));
+      db.createQueuedTopic({
+        topic: t.topic,
+        reason: t.reason ?? null,
+        priority: t.priority ?? 'medium',
+        source: 'ceo',
+        scheduled_for: scheduledFor.toISOString(),
+      });
+      queuedTopics.push(t.topic);
+      log.info(`[CEO] Nächstes Topic queued (${t.priority}, in ${t.days_from_now ?? 1}d): ${t.topic.slice(0, 60)}`);
+    } catch (err) {
+      log.error(`[CEO] Topic-Queue fehlgeschlagen: ${err.message}`);
+    }
+  });
+
   log.info(`[CEO] Synthese abgeschlossen — ${tokens} Tokens`);
 
   return {
-    text: formatDecision(result, newAgents),
+    text: formatDecision(result, newAgents, queuedTopics),
     tokens,
     raw: result,
     newAgents,
+    queuedTopics,
   };
 }
 
@@ -199,7 +234,7 @@ async function checkFollowups() {
 
 // ── HILFSMETHODEN ─────────────────────────────────────
 
-function formatDecision(result, newAgents = []) {
+function formatDecision(result, newAgents = [], queuedTopics = []) {
   if (!result.decision_text) return JSON.stringify(result, null, 2);
   const lines = [
     `Entscheidung: ${result.decision?.toUpperCase()} — ${result.decision_text}`,
@@ -219,6 +254,10 @@ function formatDecision(result, newAgents = []) {
   if (newAgents.length) {
     lines.push(``, `Neue Abteilungen erstellt:`);
     newAgents.forEach(n => lines.push(`  + ${n} — wird beim naechsten Lauf aktiv`));
+  }
+  if (queuedTopics.length) {
+    lines.push(``, `Naechste Deliberationen geplant:`);
+    queuedTopics.forEach(t => lines.push(`  → ${t.slice(0, 80)}`));
   }
   return lines.join('\n');
 }

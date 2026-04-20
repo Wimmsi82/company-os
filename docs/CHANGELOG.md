@@ -1,5 +1,49 @@
 # CHANGELOG — Company OS
 
+## [2026-04-20] — v4 Maximale Autonomie
+
+- Erstellt: `queued_topics`-Tabelle — CEO und Operator können Deliberationsthemen vorausplanen
+- Geändert: `src/agents/ceo.js` — neues JSON-Feld `next_topics`: CEO schlägt nach jeder Synthese eigenständig nächste Deliberationen vor (max 2, mit Scheduling)
+- Geändert: `src/agents/ceo.js` — CEO System-Prompt: explizit angewiesen nächste Themen zu queuen wenn nötig
+- Geändert: `src/scheduler/orchestrator.js` — `buildDynamicPulseTopic()`: liest DB-State (Eskalationen, Metriken, Tasks, Projekte, Queue) und baut dynamisches Topic statt hartem String
+- Geändert: `src/scheduler/orchestrator.js` — `runDeliberation(topic, trigger, projectId)`: neues optionales `projectId`-Argument mit Projekt-Kontext-Injektion
+- Geändert: `src/scheduler/orchestrator.js` — `checkMetrics()`: kritische Metriken (>2x Schwellenwert) triggern sofortige Deliberation statt nur Task
+- Geändert: `src/scheduler/cron.js` — Daily Pulse 08:00 nutzt `buildDynamicPulseTopic()` statt hartem String
+- Geändert: `src/scheduler/cron.js` — Weekly (Mo 07:00) läuft danach automatisch pro aktivem Projekt einen eigenen Wochen-Check
+- Geändert: `src/scheduler/cron.js` — neuer Job alle 2h: verarbeitet fällige queued_topics (max 2 pro Durchlauf, priority-sorted)
+- Geändert: `src/api/routes.js` — neue Endpoints: GET/POST `/api/queued-topics`, PATCH `/api/queued-topics/:id/skip`
+- User-Impact: System läuft 24/7 autonom auf Pi; CEO plant nächste Themen selbst; täglicher Pulse reagiert auf aktuellen Systemzustand; kritische Metriken eskalieren sofort
+
+Autonomie-Ablauf nach Deployment:
+```
+08:00  → Dynamischer Daily Pulse (liest Eskalationen, Metriken, Tasks, Projekte)
+alle 2h → CEO-vorgeschlagene Topics abarbeiten
+60min  → Task-Queue + Metrik-Check (kritisch → sofort Deliberation) + Follow-ups
+Mo 7:00 → Weekly + pro aktivem Projekt eigener Wochen-Check
+:30/h  → Follow-up-Check
+```
+
+## [2026-04-20] — v3 Kontext-Hierarchie (Mission → Projekt → Task)
+
+Inspiriert von Paperclip: Projektkontexte ergänzen den globalen Unternehmenskontext als mittlere Schicht.
+
+- Erstellt: `projects`-Tabelle in SQLite (name, description, goals, constraints, status)
+- Geändert: `tasks`-Tabelle — neue Spalte `project_id` (nullable FK)
+- Geändert: `src/db/migrate.js` — Schema + retroaktive Migration für bestehende DBs
+- Geändert: `src/db/index.js` — createProject, getAllProjects, getProjectById/ByName, updateProject, archiveProject
+- Geändert: `run.js` — `buildGlobalContextPrompt(project)` baut 3-Schicht-Kontext
+- Geändert: `run.js` — neue CLI-Befehle: `--new-project`, `--projects`, `--project "Name" "Frage"`, `--project-consultant`
+- Geändert: `run.js` — `runDeliberation()` akzeptiert `projectId`, lädt Projekt aus DB, injiziert Kontext
+- Geändert: `src/api/routes.js` — neue Endpoints: GET/POST `/api/projects`, GET/PATCH `/api/projects/:id`, DELETE `/api/projects/:id/archive`
+- User-Impact: Agenten sehen jetzt Mission → Projekt → Task als dreistufigen Kontext-Stack
+
+Kontext-Stack für Agenten:
+```
+Unternehmenskontext (Mission):  ← global_memory (company_context, goals, ...)
+  Projekt-Kontext [Projektname]: ← projects.description / .goals / .constraints
+    Frage / Aufgabe              ← task.body / deliberation topic
+```
+
 ## [2026-04-14] — Initiales Setup
 
 - Erstellt: vollständige Projektstruktur unter ~/Dev/company-os

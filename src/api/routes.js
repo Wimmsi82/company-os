@@ -56,6 +56,61 @@ router.get('/messages', (req, res) => {
   res.json(db.getAllMessages());
 });
 
+// ── Projekte ────────────────────────────────────────────
+
+router.get('/projects', (req, res) => {
+  res.json(db.getAllProjects());
+});
+
+router.post('/projects', (req, res) => {
+  const { name, description, goals, constraints } = req.body;
+  if (!name) return res.status(400).json({ error: 'name Pflicht' });
+  if (db.getProjectByName(name)) {
+    return res.status(409).json({ error: `Projekt "${name}" existiert bereits` });
+  }
+  db.createProject({ name, description, goals, constraints });
+  const created = db.getProjectByName(name);
+  res.json({ ok: true, project: created });
+});
+
+router.get('/projects/:id', (req, res) => {
+  const project = db.getProjectById(req.params.id) || db.getProjectByName(req.params.id);
+  if (!project) return res.status(404).json({ error: 'Nicht gefunden' });
+  res.json(project);
+});
+
+router.patch('/projects/:id', (req, res) => {
+  const project = db.getProjectById(req.params.id);
+  if (!project) return res.status(404).json({ error: 'Nicht gefunden' });
+  db.updateProject(req.params.id, req.body);
+  res.json({ ok: true });
+});
+
+router.delete('/projects/:id/archive', (req, res) => {
+  const project = db.getProjectById(req.params.id);
+  if (!project) return res.status(404).json({ error: 'Nicht gefunden' });
+  db.archiveProject(req.params.id);
+  res.json({ ok: true });
+});
+
+// ── Queued Topics ───────────────────────────────────────
+
+router.get('/queued-topics', (req, res) => {
+  res.json(db.getAllQueuedTopics());
+});
+
+router.post('/queued-topics', (req, res) => {
+  const { topic, reason, priority, project_id, scheduled_for } = req.body;
+  if (!topic) return res.status(400).json({ error: 'topic Pflicht' });
+  db.createQueuedTopic({ topic, reason, priority, source: 'operator', project_id, scheduled_for });
+  res.json({ ok: true });
+});
+
+router.patch('/queued-topics/:id/skip', (req, res) => {
+  db.setQueuedTopicSkipped(req.params.id);
+  res.json({ ok: true });
+});
+
 // ── Gedächtnis ──────────────────────────────────────────
 
 router.get('/memory', (req, res) => {

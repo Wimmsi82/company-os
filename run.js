@@ -26,6 +26,7 @@ const { runNegotiations, formatNegotiations } = require('./src/scheduler/negotia
 const { runIterativeLoop, MAX_ROUNDS } = require('./src/scheduler/loop');
 const { listConsultants, getConsultant } = require('./src/agents/consultants');
 const { runMetaEvaluation, getPerformanceReport } = require('./src/agents/meta');
+const vault = require('./src/vault');
 
 const MODE = process.env.CLAUDE_MODE ?? 'cli';
 const IS_WIN = process.platform === 'win32';
@@ -191,9 +192,20 @@ function buildGlobalContext() {
   } catch { return ''; }
 }
 
-function buildGlobalContextPrompt() {
+// project: optionales Projekt-Objekt aus DB (hat name, description, goals, constraints)
+function buildGlobalContextPrompt(project = null) {
   const ctx = buildGlobalContext();
-  return ctx ? '\n\nUnternehmenskontext:\n' + ctx : '';
+  let result = ctx ? '\n\nUnternehmenskontext (Mission):\n' + ctx : '';
+  if (project) {
+    const lines = [];
+    if (project.description) lines.push(`- Beschreibung:  ${project.description}`);
+    if (project.goals)       lines.push(`- Projektziele:  ${project.goals}`);
+    if (project.constraints) lines.push(`- Constraints:   ${project.constraints}`);
+    if (lines.length) {
+      result += `\n\nProjekt-Kontext [${project.name}]:\n` + lines.join('\n');
+    }
+  }
+  return result;
 }
 
 // ── ONBOARDING ─────────────────────────────────────────
@@ -238,11 +250,84 @@ async function runOnboarding() {
   console.log(`\nNaechster Schritt:\n  node run.js "Deine erste Frage ans Team"\n`);
 }
 
+// ── PROJEKT-VERWALTUNG ──────────────────────────────────
+
+async function runNewProject() {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (q) => new Promise(resolve => rl.question(q, resolve));
+  const SEP = '─'.repeat(60);
+
+  console.log('\n' + SEP);
+  console.log('  COMPANY OS — Neues Projekt');
+  console.log(SEP);
+  console.log('\nProjekte geben jeder Deliberation einen spezifischen Kontext.\n');
+  console.log('Der Kontext-Stack fuer Agenten wird dann:');
+  console.log('  1. Unternehmenskontext (Mission) — global');
+  console.log('  2. Projekt-Kontext — projektspezifisch');
+  console.log('  3. Aufgabe / Frage — konkret\n');
+
+  const name = (await ask('Projektname (kurz, z.B. "DACH-Expansion"): ')).trim();
+  if (!name) { rl.close(); console.log('Abgebrochen.'); return; }
+
+  // Existiert bereits?
+  const existing = db.getProjectByName(name);
+  if (existing) {
+    console.log(`\nProjekt "${name}" existiert bereits (ID: ${existing.id})`);
+    rl.close();
+    return;
+  }
+
+  console.log(`\nOptionale Details fuer "${name}" — Enter um zu ueberspringen:\n`);
+  const description = (await ask('Beschreibung (was ist dieses Projekt?): ')).trim() || null;
+  const goals       = (await ask('Projektziele (was soll erreicht werden?): ')).trim() || null;
+  const constraints = (await ask('Constraints (Budget, Zeit, Ressourcen?): ')).trim() || null;
+
+  db.createProject({ name, description, goals, constraints });
+  rl.close();
+
+  console.log('\n' + SEP);
+  console.log(`  ✓ Projekt "${name}" erstellt.\n`);
+  console.log(`Deliberation mit Projekt-Kontext starten:`);
+  console.log(`  node run.js --project "${name}" "Deine Frage"\n`);
+}
+
+function listProjects() {
+  const projects = db.getAllProjects();
+  const SEP = '─'.repeat(60);
+  console.log('\n' + SEP);
+  console.log('  Projekte\n');
+  if (!projects.length) {
+    console.log('  Noch keine Projekte. Erstellen mit: node run.js --new-project');
+  } else {
+    projects.forEach(p => {
+      const status = p.status === 'active' ? '●' : '○';
+      console.log(`  ${status} ${p.name.padEnd(25)} [${p.status}]`);
+      if (p.description) console.log(`    ${p.description.slice(0, 70)}`);
+      if (p.goals)       console.log(`    Ziele: ${p.goals.slice(0, 60)}`);
+      console.log('');
+    });
+    console.log(`Verwendung: node run.js --project "Projektname" "Frage"`);
+  }
+  console.log('');
+}
+
 // ── DELIBERATION ───────────────────────────────────────
 
-async function runDeliberation(topic, skipPdf = false, consultantIds = []) {
+async function runDeliberation(topic, skipPdf = false, consultantIds = [], projectId = null) {
   const cycleId = db.createCycle('manual', topic);
-  const globalCtxPrompt = buildGlobalContextPrompt();
+
+  // Projekt laden wenn angegeben
+  let project = null;
+  if (projectId) {
+    project = db.getProjectById(projectId) || db.getProjectByName(projectId);
+    if (!project) {
+      console.warn(`  Warnung: Projekt "${projectId}" nicht gefunden — ohne Projekt-Kontext`);
+    }
+  }
+
+  const globalCtxPrompt = buildGlobalContextPrompt(project);
+  const vaultContext = vault.readVaultContext(topic);
+  if (vaultContext) console.log('  Vault-Kontext: aktiv');
   const globalCtxText = buildGlobalContext();
   const SEP = '─'.repeat(60);
 
@@ -250,7 +335,8 @@ async function runDeliberation(topic, skipPdf = false, consultantIds = []) {
   console.log('  COMPANY OS');
   console.log(`  Modus: ${MODE.toUpperCase()}`);
   console.log(`  Thema: "${topic}"`);
-  if (globalCtxText) console.log('  Kontext: aktiv');
+  if (project)          console.log(`  Projekt: ${project.name}`);
+  if (globalCtxText)    console.log('  Kontext: aktiv');
   if (consultantIds.length) console.log(`  Consultants: ${consultantIds.join(', ')}`);
   console.log(SEP + '\n');
 
@@ -423,9 +509,11 @@ Nur bei echten Luecken neue Agenten vorschlagen. Max 2. missing_perspectives = [
   try {
     db.createTask({
       from_dept: 'ceo', to_dept: 'all', type: 'decision', priority: 1,
-      title: `CEO: ${topic.slice(0, 80)}`, body: decisionText, cycle_id: cycleId,
+      title: `CEO: ${topic.slice(0, 80)}`, body: decisionText,
+      cycle_id: cycleId, project_id: project?.id ?? null,
     });
     db.updateCycle(cycleId, 'done', { phase1, phase2, decision: decisionText }, 0);
+    vault.writeCycleLog({ cycleId, topic, phase1, phase2, decision: decisionText });
   } catch {}
 
   console.log('\n' + SEP);
@@ -543,6 +631,33 @@ if (args[0] === '--onboarding') {
   }
   console.log('');
 
+} else if (args[0] === '--new-project') {
+  runNewProject().catch(console.error);
+
+} else if (args[0] === '--projects') {
+  listProjects();
+
+} else if (args[0] === '--project') {
+  // Format: node run.js --project "Projektname" "Frage"
+  const projectName = args[1];
+  const topic = args.slice(2).join(' ');
+  if (!projectName || !topic) {
+    console.error('Format: node run.js --project "Projektname" "Frage"');
+    process.exit(1);
+  }
+  runDeliberation(topic, skipPdf, [], projectName).catch(console.error);
+
+} else if (args[0] === '--project-consultant') {
+  // Format: node run.js --project-consultant "Projektname" mckinsey,ey "Frage"
+  const projectName  = args[1];
+  const cIds         = (args[2] ?? '').split(',').map(s => s.trim());
+  const topic        = args.slice(3).join(' ');
+  if (!projectName || !topic) {
+    console.error('Format: node run.js --project-consultant "Projekt" mckinsey "Frage"');
+    process.exit(1);
+  }
+  runDeliberation(topic, skipPdf, cIds, projectName).catch(console.error);
+
 } else if (args[0] === '--list-consultants') {
   const list = listConsultants();
   console.log('\n── Verfuegbare Consultants ──');
@@ -573,7 +688,12 @@ Verwendung / Usage:
   node run.js --performance             Agent-Performance
   node run.js --list-consultants        Verfuegbare Consultants anzeigen
   node run.js --consultant mckinsey "Frage"  Mit McKinsey-Berater
-  node run.js --consultant mckinsey,ey "Frage"  Mehrere Consultants
+
+Projekte (Kontext-Hierarchie):
+  node run.js --new-project             Neues Projekt anlegen
+  node run.js --projects                Alle Projekte anzeigen
+  node run.js --project "Name" "Frage"  Deliberation im Projekt-Kontext
+  node run.js --project-consultant "Name" mckinsey "Frage"
 
 Modus (in .env):
   CLAUDE_MODE=cli   Claude Code CLI (kein API Key noetig)
