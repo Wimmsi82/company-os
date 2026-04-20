@@ -658,6 +658,43 @@ if (args[0] === '--onboarding') {
   }
   runDeliberation(topic, skipPdf, cIds, projectName).catch(console.error);
 
+} else if (args[0] === '--webhooks') {
+  // Webhook-URLs und Status anzeigen
+  const SEP = '─'.repeat(60);
+  const port = process.env.PORT ?? '3000';
+  const host = process.env.WEBHOOK_HOST ?? `http://localhost:${port}`;
+  console.log('\n' + SEP);
+  console.log('  Webhook-Endpunkte\n');
+  console.log('  Empfang (POST):');
+
+  const { RULES } = require('./src/webhooks/processor');
+  Object.keys(RULES).forEach(src => {
+    console.log(`\n  ${src.toUpperCase()}`);
+    console.log(`    URL:    ${host}/api/webhooks/${src}`);
+    const events = Object.keys(RULES[src]).filter(e => e !== '*');
+    if (events.length) {
+      console.log(`    Events: ${events.slice(0, 4).join(', ')}${events.length > 4 ? ` ... (+${events.length - 4})` : ''}`);
+    }
+  });
+
+  try {
+    const configs = db.getAllWebhookConfigs();
+    if (configs.length) {
+      console.log('\n  Gespeicherte Configs:');
+      configs.forEach(c => {
+        const status = c.active ? '●' : '○';
+        const secret = c.secret ? '🔒 Secret gesetzt' : '⚠  Kein Secret (unsicher)';
+        console.log(`  ${status} ${c.source.padEnd(12)} ${secret}`);
+      });
+    }
+  } catch {}
+
+  console.log('\n  Generic-Webhook (Zapier / Make):');
+  console.log(`  POST ${host}/api/webhooks/generic`);
+  console.log('  Body: { "event": "...", "summary": "...", "dept": "sales", "severity": "high", "deliberate": true }');
+  console.log('\n  Secret setzen: POST /api/webhooks/:source/secret { "secret": "..." }');
+  console.log('');
+
 } else if (args[0] === '--list-consultants') {
   const list = listConsultants();
   console.log('\n── Verfuegbare Consultants ──');
@@ -694,6 +731,12 @@ Projekte (Kontext-Hierarchie):
   node run.js --projects                Alle Projekte anzeigen
   node run.js --project "Name" "Frage"  Deliberation im Projekt-Kontext
   node run.js --project-consultant "Name" mckinsey "Frage"
+
+Webhooks (externe Trigger):
+  node run.js --webhooks                Webhook-URLs und Status anzeigen
+  POST /api/webhooks/stripe             Stripe-Events empfangen
+  POST /api/webhooks/hubspot            HubSpot-Events empfangen
+  POST /api/webhooks/generic            Beliebige Events (Zapier, Make, ...)
 
 Modus (in .env):
   CLAUDE_MODE=cli   Claude Code CLI (kein API Key noetig)

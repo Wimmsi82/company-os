@@ -1,5 +1,15 @@
 # CHANGELOG — Company OS
 
+## [2026-04-20] — v5 Webhook-Trigger
+
+- Erstellt: `src/webhooks/processor.js` — Event-Routing mit Regeln für Stripe, HubSpot, Generic
+- Erstellt: `webhook_configs`-Tabelle — konfigurierbare Quellen mit optionalem HMAC-Secret
+- Erstellt: `webhook_events`-Tabelle — vollständiges Audit-Log aller eingehenden Events
+- Geändert: `src/api/routes.js` — POST `/api/webhooks/:source`, GET `/api/webhooks`, POST `/api/webhooks/:source/secret`, GET `/api/webhook-events`
+- Geändert: `run.js` — neuer Befehl `--webhooks` (URLs, Status, Generic-Format)
+- Geändert: `src/db/migrate.js` + `src/db/index.js` — Webhook-Schema + Helpers
+- User-Impact: Stripe-Kündigung → sofortige Deliberation; jedes Tool (Zapier, Make) kann via Generic-Webhook Tasks oder Deliberationen auslösen
+
 ## [2026-04-20] — v4 Maximale Autonomie
 
 - Erstellt: `queued_topics`-Tabelle — CEO und Operator können Deliberationsthemen vorausplanen

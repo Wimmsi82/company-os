@@ -93,6 +93,48 @@ router.delete('/projects/:id/archive', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Webhooks ────────────────────────────────────────────
+
+const { handleWebhook } = require('../webhooks/processor');
+
+// Webhook-Empfang: POST /api/webhooks/:source
+router.post('/webhooks/:source', express.raw({ type: '*/*' }), async (req, res) => {
+  const source  = req.params.source.toLowerCase();
+  const rawBody = req.body?.toString?.() ?? '';
+  let payload;
+  try {
+    payload = JSON.parse(rawBody || '{}');
+  } catch {
+    return res.status(400).json({ error: 'Ungültiger JSON-Body' });
+  }
+
+  const result = await handleWebhook({
+    source, rawBody, headers: req.headers, payload,
+  }).catch(err => ({ ok: false, error: err.message }));
+
+  res.status(result.ok ? 200 : 400).json(result);
+  log.info(`[API] Webhook ${source}: ${result.action ?? result.error}`);
+});
+
+// Webhook-Konfiguration anzeigen
+router.get('/webhooks', (req, res) => {
+  const configs = db.getAllWebhookConfigs();
+  res.json(configs.map(c => ({ ...c, secret: c.secret ? '***' : null })));
+});
+
+// Secret für eine Quelle setzen
+router.post('/webhooks/:source/secret', (req, res) => {
+  const { secret } = req.body;
+  if (!secret) return res.status(400).json({ error: 'secret Pflicht' });
+  db.upsertWebhookConfig(req.params.source, secret);
+  res.json({ ok: true, url: `/api/webhooks/${req.params.source}` });
+});
+
+// Event-Log
+router.get('/webhook-events', (req, res) => {
+  res.json(db.getRecentWebhookEvents());
+});
+
 // ── Queued Topics ───────────────────────────────────────
 
 router.get('/queued-topics', (req, res) => {
