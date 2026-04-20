@@ -71,14 +71,16 @@ class BaseAgent {
           .map(([id, r]) => `[${id}]: ${r}`).join('\n\n')
       : '';
 
-    const prompt = `${task.body}${memCtx}${memLogCtx}${msgCtx}${escalCtx}${subCtx}
+    const liveCtx = this._buildLiveContext();
+    const prompt = `${task.body}${memCtx}${memLogCtx}${liveCtx}${msgCtx}${escalCtx}${subCtx}
 
-WICHTIG: Nutze gespeichertes Wissen aktiv. Aktualisiere Gedaechtnis bei relevantem Erkenntnisgewinn.
-Du kannst Unteragenten beauftragen wenn du spezialisierte Analyse brauchst.
+Bearbeite diese Aufgabe mit deinem vollen Fachwissen. Nutze gespeichertes Wissen aktiv.
+Aktualisiere das Gedaechtnis wenn du neue relevante Erkenntnisse gewinnst.
+Du kannst Unteragenten beauftragen wenn du spezialisierte Teilanalysen brauchst.
 
 Antworte im JSON-Format:
 {
-  "analysis": "Deine Einschaetzung (3-5 Saetze)",
+  "analysis": "Deine Einschaetzung — konkret, mit Position, mit Zahlen wenn vorhanden",
   "spawn_subagents": [
     {
       "id": "subagent_slug",
@@ -159,12 +161,22 @@ Nur JSON.`;
   // ── Erstanalyse (Phase 1) ───────────────────────────
 
   async analyze(topic) {
-    const memory = db.getMemory(this.id);
+    const memory    = db.getMemory(this.id);
     const globalMem = db.getGlobalMemory().filter(g => !g.value.includes('['));
-    const memCtx = this._buildMemoryContextV2(memory, globalMem);
-    const { text } = await claude.call(
+    const memCtx    = this._buildMemoryContextV2(memory, globalMem);
+    const liveCtx   = this._buildLiveContext();
+    const { text }  = await claude.call(
       this.systemPrompt,
-      `Aufgabe: ${topic}${memCtx}\n\nLiefere eine praezise Einschaetzung (3-5 Saetze). Nutze gespeichertes Wissen. Kein JSON.`
+      `Aufgabe: ${topic}${memCtx}${liveCtx}
+
+Deine Einschaetzung als ${this.name}:
+1. Was bedeutet das konkret fuer deine Abteilung und deine Verantwortung?
+2. Welche Zahlen oder Metriken sind hier entscheidend? Beziehe dich auf die oben genannten wenn vorhanden.
+3. Was ist deine klare Empfehlung — ja, nein, oder nur unter welchen konkreten Bedingungen?
+4. Was ist dein groesstes Risiko, und was koennte schiefgehen wenn man deinen Rat ignoriert?
+
+Sei direkt. Nimm Position ein. "Es kommt darauf an" gilt nur mit klaren Bedingungen dahinter.
+Kein JSON. Kein Bullshit.`
     );
     return text;
   }
@@ -172,15 +184,27 @@ Nur JSON.`;
   // ── Deliberation (Phase 2) ──────────────────────────
 
   async deliberate(topic, allAnalyses) {
-    const memory = db.getMemory(this.id);
+    const memory    = db.getMemory(this.id);
     const globalMem = db.getGlobalMemory().filter(g => !g.value.includes('['));
-    const memCtx = this._buildMemoryContextV2(memory, globalMem);
+    const memCtx    = this._buildMemoryContextV2(memory, globalMem);
+    const liveCtx   = this._buildLiveContext();
     const ctx = Object.entries(allAnalyses)
       .filter(([dept]) => dept !== this.id)
       .map(([dept, text]) => `[${dept}]: ${text}`).join('\n\n');
     const { text } = await claude.call(
       this.systemPrompt,
-      `Aufgabe: ${topic}${memCtx}\n\nErstanalysen:\n${ctx}\n\nReagiere in 2-3 Saetzen. Wo stimmst du zu, wo nicht? Nenn Abteilungen beim Namen.`
+      `Aufgabe: ${topic}${memCtx}${liveCtx}
+
+Erstanalysen der anderen Abteilungen:
+${ctx}
+
+Jetzt ist dein Urteil gefragt:
+- Wer liegt aus deiner Sicht falsch oder denkt zu kurz? Nenn sie beim Namen und begruende es konkret.
+- Was uebersehen alle — einschliesslich deiner eigenen Erstanalyse?
+- Was ist aus deiner Perspektive nicht verhandelbar, egal was die anderen sagen?
+- Aendert sich deine Empfehlung durch die anderen Analysen? Wenn ja: was hat dich ueberzeugt?
+
+Keine falsche Harmonie. Wenn du zustimmst, sag konkret warum — nicht nur "guter Punkt". Kein JSON.`
     );
     return text;
   }
@@ -233,6 +257,56 @@ Bewerte deine Einschaetzung ehrlich: Was war richtig, was falsch, was habe ich u
   }
 
   // ── Hilfsmethoden ───────────────────────────────────
+
+  // ── Live-Kontext (Metriken, Tasks, Projekte, Datum) ──
+  // Gibt Agenten das, was echte Manager vor jedem Meeting prüfen
+
+  _buildLiveContext() {
+    const parts = [];
+
+    // Datum + Quartal
+    try {
+      const now = new Date();
+      const q = Math.ceil((now.getMonth() + 1) / 3);
+      parts.push(`Heute: ${now.toLocaleDateString('de-AT', { year:'numeric', month:'2-digit', day:'2-digit' })} (Q${q}/${now.getFullYear()})`);
+    } catch {}
+
+    // Alle Metriken aus DB — mit Alert-Flag
+    try {
+      const metrics = db.getAllMetrics();
+      if (metrics.length) {
+        const lines = metrics.map(m => {
+          const val = m.value ?? '–';
+          const unit = m.unit ? ` ${m.unit}` : '';
+          const isHigh = m.threshold_high != null && m.value > m.threshold_high;
+          const isLow  = m.threshold_low  != null && m.value < m.threshold_low;
+          const flag   = isHigh || isLow ? ' ⚠ AUSSERHALB SCHWELLENWERT' : '';
+          return `  ${m.name}: ${val}${unit}${flag}`;
+        });
+        parts.push(`Aktuelle Unternehmensmetriken:\n${lines.join('\n')}`);
+      }
+    } catch {}
+
+    // Eigene offene Tasks (Workload)
+    try {
+      const pending = db.getAllPendingTasks().filter(t => t.to_dept === this.id);
+      if (pending.length) {
+        const highPrio = pending.filter(t => t.priority <= 2).length;
+        const topTasks = pending.slice(0, 3).map(t => `    - [P${t.priority}] ${t.title}`).join('\n');
+        parts.push(`Meine offene Tasks (${pending.length} gesamt, ${highPrio} hochpriorisiert):\n${topTasks}`);
+      }
+    } catch {}
+
+    // Aktive Projekte
+    try {
+      const projects = db.getActiveProjects?.();
+      if (projects?.length) {
+        parts.push(`Aktive Projekte: ${projects.map(p => p.name).join(', ')}`);
+      }
+    } catch {}
+
+    return parts.length ? '\n\n--- Aktueller Stand ---\n' + parts.join('\n') + '\n---' : '';
+  }
 
   _buildMemoryContextV2(deptMemory, globalMem = []) {
     const parts = [];
