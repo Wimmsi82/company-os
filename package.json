@@ -1,14 +1,35 @@
 {
-  "name": "company-os",
-  "version": "3.0.0",
-  "description": "Autonomous multi-agent company OS — deliberation, memory, PDF export",
+  "name": "@wimmsi82/company-os",
+  "version": "8.0.0",
+  "description": "Autonomous multi-agent company OS — 8 specialist agents + CEO deliberate every business question in 3 phases. Runs 24/7 on Raspberry Pi.",
   "main": "src/index.js",
+  "bin": {
+    "company-os": "./run.js"
+  },
   "scripts": {
     "setup":   "node setup.js",
     "start":   "node src/index.js",
     "dev":     "nodemon src/index.js",
     "migrate": "node src/db/migrate.js",
     "test":    "node --test tests/"
+  },
+  "files": [
+    "src/",
+    "run.js",
+    "setup.js",
+    ".env.example",
+    "docs/",
+    "company-os.service",
+    "INSTALL.md",
+    "README.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "install-pi.sh",
+    "install-mac.sh",
+    "install-windows.ps1"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -24,5 +45,13 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "keywords": ["ai", "agents", "llm", "deliberation", "company-os", "autonomous", "multi-agent"],
+  "author": "Bernhard Wimmer",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wimmsi82/company-os.git"
+  },
+  "homepage": "https://github.com/Wimmsi82/company-os#readme"
 }

@@ -1,0 +1,17 @@
+# Laufzeit-Daten
+db/
+reports/
+.env
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Dev
+node_modules/
+.claude/
+.git/
+*.log
+
+# Tests / Worktrees
+tests/
+.claude/worktrees/

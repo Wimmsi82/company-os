@@ -20,3 +20,9 @@ logs/
 # Temporäre Dateien
 tmp/
 *.tmp
+
+# npm publish — enthält Auth-Token
+.npmrc
+
+# PDF-Exports
+reports/
