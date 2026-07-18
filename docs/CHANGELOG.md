@@ -1,5 +1,11 @@
 # CHANGELOG — Company OS
 
+## [2026-07-18] — Globale Skill-Installation (Anthropic Skills)
+
+- Erstellt: `scripts/install-global-skills.sh` — installiert Skills aus dem offiziellen Anthropic Skills-Repo (https://github.com/anthropics/skills) global nach `~/.claude/skills`
+- Default: `frontend-design`; per Argument beliebige Skills, `--all` für alle, `--list` zeigt verfügbare Skills
+- User-Impact: Anthropic-Skills (z.B. frontend-design) sind mit einem Befehl global in Claude Code verfügbar — auf jedem Rechner inkl. Pi
+
 ## [2026-04-20] — v8 Protokoll-PDF + Agenten-Persönlichkeiten
 
 - Geändert: `src/pdf.js` — komplettes Redesign als Protokoll: SWOT-Analyse (2×2-Grid), Positionsmatrix (Haltung jeder Abteilung), nummerierte Handlungsempfehlungen, Entscheidungs-Badge (JA/NEIN/BEDINGT), strukturiertes Layout mit 7 Abschnitten
