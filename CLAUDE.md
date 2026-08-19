@@ -62,6 +62,37 @@ MAX_AGENT_CALLS_PER_CYCLE=20
 DAILY_TOKEN_LIMIT=100000
 LOG_LEVEL=info
 
+## Wartezeit-UX (seit 2026-08-18)
+
+Skill `.claude/skills/wartezeit-ux/` ist committed (kein `.gitignore`-Ausschluss dafuer).
+Audit: `docs/audit-wartezeit-2026-08-18.md`. `src/ui/index.html` ist die einzige
+Frontend-Datei (Vanilla JS, kein Framework, kein Build-Step) — die Bausteine bleiben
+entsprechend simpel:
+
+- **`fetchJSON(url, opts)`** (Anfang des `<script>`-Blocks) ersetzt jedes
+  `fetch(...).then(r=>r.json()).catch(() => [])`: prueft `resp.ok`, wirft sonst.
+  Jede `load*()`-Funktion faengt das ab und zeigt einen eigenen `role="alert"`-Text
+  statt des Leer-Zustands ("Keine Tasks." etc.) — ein totes Backend darf nie
+  aussehen wie ein leerer, aber funktionierender Account.
+- **`confirmDialog(message)`** / **`promptDialog(message, default)`** ersetzen
+  `window.confirm`/`window.prompt` (Focus-Trap, Escape-to-close, Fokus-Rueckgabe).
+  Neue destruktive Aktionen gehen darueber, nie ueber die Browser-Dialoge.
+- **ARIA-Ladezustaende**: die statischen "Lade …"-Platzhalter im HTML tragen
+  `role="status"`; die dynamisch generierten Fehlertexte in den `catch`-Bloecken
+  tragen `role="alert"`. Die eigentliche Erfolgs-Ansicht (Tabelle/Karten) bekommt
+  bewusst **kein** dauerhaftes `aria-live` — die Views werden nach jeder
+  Nutzeraktion (Antworten, Loeschen, Erstellen) neu gerendert; ein persistentes
+  Live-Attribut wuerde bei jeder Routine-Aktion den ganzen Bereich erneut vorlesen.
+- **`#hStatusError`** (Header) zeigt/versteckt sich nur bei einem tatsaechlichen
+  Zustandswechsel von `loadStatus()` (nicht bei jedem der 30s-Polls) — verhindert
+  wiederholte Announcements bei anhaltendem Backend-Ausfall UND vermeidet, dass
+  die feste Log-Zeile "Dashboard verbunden" unabhaengig vom echten Ergebnis steht.
+- Buttons mit Seiteneffekt (10 Stellen: Deliberation starten, Queue, Eskalation
+  beantworten/ablehnen, Task/Projekt anlegen, Follow-up schliessen, Metrik
+  speichern, Projekt archivieren/deliberieren) werden waehrend des Requests
+  `disabled` + `aria-busy`, sonst erzeugt ein Doppelklick doppelte Eintraege.
+- `@media (prefers-reduced-motion: reduce)` deaktiviert die `.pulse`-Animation.
+
 ## Docs
 @docs/PRD.md
 @docs/SYSTEM_DESIGN.md
