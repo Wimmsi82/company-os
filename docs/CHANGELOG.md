@@ -1,5 +1,13 @@
 # CHANGELOG — Company OS
 
+## [2026-09-23] — Fehlende src/db/ und src/vault/index.js rekonstruiert
+
+- Erstellt: `src/db/migrate.js`, `src/db/index.js` — beide Dateien fehlten im gesamten Repo (auch auf dem ersten erreichbaren Pi, frischer Clone bestätigte es), rekonstruiert aus allen ~65 `db.*`-Aufrufen im Code (agents/, scheduler/, api/, webhooks/); 15 Tabellen inkl. der in diesem Changelog dokumentierten v2–v5-Erweiterungen
+- Erstellt: `src/vault/index.js` — `readVaultContext`, `writeCycleLog`, `writeAlertToInbox`, Format passend zu `src/vault/search.js`
+- Geändert: `src/vault/search.js` — Bugfix: `\z` ist in JS kein Zeilenende-Anker, der CEO-Synthese-Regex griff nie, wenn der Abschnitt am Dateiende steht
+- Erstellt: `tests/db.test.js` — 13 Tests für den rekonstruierten DB-Layer
+- User-Impact: `npm run migrate && npm start` funktioniert jetzt aus einem frischen Checkout, ohne dass DB-Dateien manuell von einem Pi kopiert werden müssen
+
 ## [2026-09-23] — Assistent: Bonsai lokal + Obsidian + Todoist + Chat
 
 - Erstellt: `src/vault/indexer.js` — Volltext-Index (SQLite FTS5, eigene DB `db/vault-index.sqlite`) über den ganzen Vault inkl. Text verlinkter PDFs (`[[x.pdf]]`, `![[x.pdf]]`, `[t](pfad/x.pdf)`); Umlaut-Varianten (ü = ue); inkrementell per mtime

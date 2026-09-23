@@ -15,23 +15,20 @@ Legende: 🧑 = machst du, 🤖 = mache ich in einer Session, ⏱ = geschätzter
 
 ---
 
-## Phase 0: Fehlende Dateien ins Repo holen (Blocker) 🧑 ⏱ 10 min
-**Warum:** Durch `db/` in der `.gitignore` fehlen `src/db/index.js`, `src/db/migrate.js` und `src/vault/index.js` im Repo. Ohne sie startet Company OS aus keinem frischen Checkout. Der PR korrigiert die `.gitignore`, die Dateien selbst liegen aber nur auf dem Pi.
+## Phase 0: Fehlende Dateien ins Repo — ERLEDIGT (anders als geplant) ✅
+**Was war der Plan:** `src/db/index.js`, `src/db/migrate.js` und `src/vault/index.js` vom produktiven Pi committen.
 
-```bash
-ssh admin@192.168.188.153
-cd ~/Dev/company-os
-ls src/db/ src/vault/                     # index.js + migrate.js bzw. index.js vorhanden?
-git fetch origin
-git checkout claude/focused-heisenberg-1no3tp
-git status --short src/db src/vault       # sollten jetzt als "untracked" (??) auftauchen
-git add src/db/index.js src/db/migrate.js src/vault/index.js
-git commit -m "fix: src/db und src/vault/index.js ins Repo (waren durch .gitignore ausgeschlossen)"
-git push
-```
-**Wenn `src/vault/index.js` auch auf dem Pi fehlt:** Gib mir Bescheid. 🤖 Ich baue `readVaultContext`, `writeCycleLog` und `writeAlertToInbox` neu, passend zu `src/vault/search.js`.
+**Was tatsächlich passiert ist:** Der Pi, den Bernhard erreichen konnte (`bernhard@Raspi2`), hatte Company OS nie installiert — frischer `git clone` zeigte, dass `src/db/` und `src/vault/index.js` **dort ebenfalls fehlen**. Der ursprüngliche produktive Pi (`admin@192.168.188.153` aus der Deploy-Doku) war nicht erreichbar.
 
-**Prüfpunkt:** Der PR enthält `src/db/*.js`. 🤖 Ich prüfe danach die Company-Tools gegen die echten DB-Funktionen, siehe Phase 7.1.
+**Lösung:** Beide Dateien wurden aus der Nutzung im gesamten Code rekonstruiert — jeder der ~65 `db.*`-Aufrufe über `agents/`, `scheduler/`, `api/`, `webhooks/` wurde extrahiert (Argumentreihenfolge, Objekt- vs. positionelle Aufrufe, exakte zurückgegebene Feldnamen), daraus das Schema (`src/db/migrate.js`, 15 Tabellen) und die Query-Funktionen (`src/db/index.js`) gebaut. `src/vault/index.js` (`readVaultContext`, `writeCycleLog`, `writeAlertToInbox`) passend zum Format aus `src/vault/search.js` rekonstruiert.
+
+Dabei zwei echte Bugs gefunden und mitbehoben:
+- `src/vault/search.js`: `\z` ist in JS kein Zeilenende-Anker (anders als Python/Ruby) — der CEO-Synthese-Regex griff dadurch nie, wenn der Abschnitt am Dateiende steht (der Normalfall bei `writeCycleLog`).
+- Fehlende `id`-Tiebreaker auf `ORDER BY *_at`-Queries: SQLite `datetime('now')` hat nur Sekundenauflösung, zwei Schreibvorgänge in derselben Sekunde sortierten sonst nicht zuverlässig "neueste zuerst".
+
+**Verifiziert:** 38/38 Tests grün (13 neue für `src/db`), echter Serverstart im CLI-Modus ohne `ANTHROPIC_API_KEY`, `/api/status` antwortet, eine komplette Deliberation-Rundreise (Cycle anlegen → Vault-Log schreiben → über `searchCycleHistory` wiederfinden) manuell durchgespielt. Commit: `7341318`.
+
+**Prüfpunkt:** Der PR enthält jetzt `src/db/*.js` und `src/vault/index.js`. Noch offen: Die rekonstruierten Funktionen wurden nie gegen die **Original-Daten** des produktiven Pi getestet (falls der wieder erreichbar wird, lohnt ein Abgleich der `.sqlite`-Datei gegen das neue Schema — siehe Risiko unten).
 
 ---
 
@@ -200,6 +197,7 @@ In Telegram nacheinander ausführen und abhaken:
 ---
 
 ## Risiken (zuerst lesen)
+0. **Falls der ursprüngliche produktive Pi (mit der echten `db/company-os.sqlite`) doch noch existiert:** Das rekonstruierte Schema in `src/db/migrate.js` ist aus der Code-Nutzung abgeleitet, nicht aus der Original-Datei. `CREATE TABLE IF NOT EXISTS` überschreibt nichts, eine bereits vorhandene `.sqlite` mit abweichenden Spalten kann aber zu Laufzeitfehlern führen. Vor dem ersten Start auf diesem Pi: `sqlite3 db/company-os.sqlite ".schema"` gegen `src/db/migrate.js` gegenlesen, oder die Datei vorher sichern (`cp db/company-os.sqlite db/company-os.sqlite.bak`) und mich mit dem Original-Schema kontaktieren, bevor der Dienst neu startet.
 1. **Tempo auf dem Pi ist unbekannt.** Die 47 Token/s stammen von einem M5 Max mit GPU, der Pi rechnet nur auf der CPU. Freitext kann 30 bis 120 s dauern. Die Befehle bleiben immer schnell. Gegenmittel: Phase 2 messen, kleineres Modell wählen.
 2. **Verträge liegen auf dem Pi.** Er ist nur im LAN erreichbar, Telegram läuft über ausgehende Verbindungen. Wer Zugang zum Pi hat, hat Zugang zum Vault. Deshalb SSH nur mit Key, kein Passwort-Login.
 3. **Telegram-Server sehen Chat-Inhalte**, also auch Auszüge aus Verträgen in den Antworten. Ist dir das bei sensiblen Dokumenten zu viel, nutzt du diese nur im Dashboard.
