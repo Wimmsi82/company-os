@@ -48,7 +48,7 @@ function createAssistant(deps = {}) {
   const lastResults = new Map();      // chatKey → [path]
   const pendingDeliberation = new Map(); // chatKey → topic
 
-  // Das Modell auf dem Pi verträgt nur eine Anfrage gleichzeitig
+  // llama-server läuft mit einem Slot (-np 1), Anfragen nacheinander
   let queue = Promise.resolve();
   function serial(fn) {
     const run = queue.then(fn, fn);

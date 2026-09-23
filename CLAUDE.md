@@ -32,12 +32,12 @@ src/
   ui/index.html      # Dashboard (inkl. Tab "Assistent")
   vault/indexer.js   # FTS5-Index über Vault + verlinkte PDFs
   vault/notes.js     # Sicheres Lesen/Schreiben von Notizen (nur Inbox/ neu, sonst nur anhängen)
-  llm/local.js       # Lokales Modell (Bonsai, llama-server) — NUR für den Assistenten
+  llm/local.js       # Bonsai (llama-server auf dem Mac, via Tailscale) — NUR für den Assistenten
   assistant/         # Chat-Kern: Befehle + RAG, Verlauf, Company-Anbindung
   integrations/todoist.js
   notifications/telegram-bot.js  # Telegram-Chat (Long Polling)
 tests/               # node --test (npm test)
-deploy/              # systemd-Units: bonsai, obsidian-sync
+deploy/              # systemd-Units: obsidian-sync (bonsai nur Referenz, Modell läuft auf dem Mac)
 ```
 
 ## Rules

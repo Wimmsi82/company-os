@@ -1,28 +1,32 @@
-# Assistent: Bonsai am Pi + Obsidian + Todoist + Company OS
+# Assistent: Bonsai + Obsidian + Todoist + Company OS
 
-Chat-Schnittstelle zu deinem Wissen und deinem System. Läuft komplett auf dem Raspberry Pi 5.
-Kein API-Key, keine Cloud für das Modell.
+Chat-Schnittstelle zu deinem Wissen und deinem System. Company OS, Vault-Index, Telegram-Bot und Todoist laufen auf dem Raspberry Pi 5. Das Sprachmodell Bonsai läuft auf dem Mac, der Pi ruft es über Tailscale auf.
+Kein Anthropic-API-Key, keine Cloud für das Modell.
 
 ```
 Du (iPhone/Mac)
- ├─ Telegram-Bot ──────────┐        (Long Polling, kein offener Port)
- └─ Dashboard-Tab "Assistent" ┐     (nur im Heimnetz)
-                              ▼
+ ├─ Telegram-Bot ─────────────┐     (Long Polling, kein offener Port)
+ └─ Dashboard-Tab "Assistent" ┐│    (nur im Heimnetz)
+                              ▼▼
 Raspberry Pi 5 (16 GB)
- ├─ company-os.service   src/assistant/  → Befehle + Vault-Suche (RAG)
- │                        src/vault/indexer.js  SQLite FTS5 über Notizen + verlinkte PDFs
- ├─ bonsai.service       llama-server (PrismML-Fork) auf 127.0.0.1:8080
+ ├─ company-os.service     src/assistant/  → Befehle + Vault-Suche (RAG)
+ │                         src/vault/indexer.js  SQLite FTS5 über Notizen + verlinkte PDFs
  └─ obsidian-sync.service  ob sync --continuous → /home/admin/vault
+        │
+        │ Tailscale (verschlüsselt), API-Key
+        ▼
+Mac (M5, 24 GB)
+ └─ LaunchAgent ai.prism.bonsai   llama-server (Metal), Bonsai 8B, nur auf der Tailscale-IP
 ```
 
 ## Wie es arbeitet
 
-- **Befehle** (`/suche`, `/aufgabe`, `/notiz`, `/heute`, `/status`, …) laufen fest im Code. Sie sind schnell und brauchen das Modell nicht.
+- **Befehle** (`/suche`, `/aufgabe`, `/notiz`, `/heute`, `/status`, …) laufen fest im Code auf dem Pi. Sie sind schnell und brauchen das Modell nicht.
 - **Freitext** geht an Bonsai. Vorher sucht der Code im Vault und gibt dem Modell die besten Treffer mit, bei den zwei besten auch den Text der verlinkten PDFs. Das Modell ruft keine Werkzeuge selbst auf, weil kleine Modelle das nicht zuverlässig können.
 - **Quellen** hängt der Code an jede Antwort an, als `obsidian://`-Link. Er öffnet die Notiz direkt in der Obsidian-App.
 - **Schreiben in den Vault**: Neue Notizen landen nur in `Inbox/`, mit den Präfixen `Idee:`, `Ref:` oder `Log:`. Bestehende Notizen werden nur ergänzt, nie überschrieben. Vorher landet eine Kopie in `.assistant-backup/`.
 - **Deliberationen** laufen weiter über Claude (CLI-Modus, Abo), nicht über Bonsai. Der Chat startet sie erst nach `/ja`.
-- Ist das Modell nicht erreichbar, liefert der Chat die passenden Vault-Treffer statt einer Antwort.
+- **Mac aus oder im Ruhezustand:** Der Pi prüft vor jeder Frage in 3 Sekunden, ob das Modell antwortet. Wenn nicht, liefert der Chat sofort die passenden Vault-Treffer statt einer Antwort.
 
 ## Befehle
 
@@ -39,18 +43,31 @@ Raspberry Pi 5 (16 GB)
 | `/deliberation Thema` → `/ja` | Deliberation starten (Claude), Ergebnis kommt per Telegram |
 | `/neu` | Gesprächsverlauf zurücksetzen |
 
-## Einrichtung am Pi
+## Einrichtung
 
-Voraussetzung: Company OS läuft bereits (siehe `INSTALL.md`). Node.js **22+**, denn das braucht `obsidian-headless`.
+Voraussetzung: Company OS läuft auf dem Pi (siehe `INSTALL.md`), Node.js **22+** (braucht `obsidian-headless`). Mac und Pi sind im selben Tailnet.
+
+### 1. Bonsai auf dem Mac
 
 ```bash
-# 1. Bonsai installieren und Tempo messen
-cd ~/Dev/company-os
-bash scripts/install-bonsai-pi.sh 8B
-node scripts/bonsai-bench.js
-#   zu langsam? → bash scripts/install-bonsai-pi.sh 4B
+cd ~/Dev/company-os && git pull
+bash scripts/install-bonsai-mac.sh        # Default 8B
+```
 
-# 2. Obsidian Sync (offizieller Headless-Client)
+Das Skript
+- nutzt `~/Dev/modelle/Bonsai-demo` und lädt das Modell nur, wenn es fehlt,
+- startet `bin/mac/llama-server` direkt (Metal), gebunden nur an die Tailscale-IP des Macs,
+- legt einen API-Key in `~/.config/bonsai/api-key` an,
+- richtet den LaunchAgent `ai.prism.bonsai` ein (startet beim Login, startet nach Absturz neu),
+- gibt am Ende die zwei Zeilen für die `.env` auf dem Pi aus.
+
+Log: `tail -f ~/Library/Logs/bonsai.log`. Stoppen: `launchctl bootout gui/$(id -u)/ai.prism.bonsai`.
+
+Damit der Mac am Netzteil nicht einschläft: `sudo pmset -c sleep 0`. Mit zugeklapptem Deckel schläft ein MacBook trotzdem, außer mit externem Bildschirm.
+
+### 2. Obsidian Sync auf dem Pi (offizieller Headless-Client)
+
+```bash
 npm install -g obsidian-headless
 ob login
 mkdir -p ~/vault && cd ~/vault && ob sync-setup --vault "Vault"
@@ -58,29 +75,49 @@ ob sync --path ~/vault
 sudo cp ~/Dev/company-os/deploy/obsidian-sync.service /etc/systemd/system/
 #   Pfad von `which ob` in ExecStart prüfen
 sudo systemctl daemon-reload && sudo systemctl enable --now obsidian-sync
+```
 
-# 3. .env ergänzen (Vorlage: .env.example, Abschnitt ASSISTENT)
-#    VAULT_PATH=/home/admin/vault
-#    LOCAL_LLM_URL=http://127.0.0.1:8080
-#    TELEGRAM_BOT_TOKEN=…  TELEGRAM_CHAT_ID=…
-#    TODOIST_API_TOKEN=…
+### 3. `.env` auf dem Pi ergänzen (Vorlage: `.env.example`, Abschnitt ASSISTENT)
+
+```ini
+VAULT_PATH=/home/admin/vault
+LOCAL_LLM_URL=http://100.x.y.z:8080       # aus install-bonsai-mac.sh
+LOCAL_LLM_API_KEY=…                        # aus install-bonsai-mac.sh
+TELEGRAM_BOT_TOKEN=…  TELEGRAM_CHAT_ID=…
+TODOIST_API_TOKEN=…
+```
+
+```bash
+cd ~/Dev/company-os
 npm install
+node scripts/bonsai-bench.js               # Tempo vom Pi aus messen, Ziel unter 30 s
 sudo systemctl restart company-os
 sudo journalctl -u company-os -f     # "[Vault-Index] +… (PDFs neu: …)" und "[Telegram-Bot] Polling gestartet"
 ```
 
 ## Modellwahl
 
-Die Werte aus der Mac-Welt (z. B. 47 Token/s auf dem M5 Max) gelten am Pi nicht, denn dort rechnet nur die CPU. Deshalb nicht schätzen, sondern `scripts/bonsai-bench.js` laufen lassen:
+Bonsai läuft auf dem Mac, weil der Pi 5 für Fragen an den Vault zu langsam ist. Gemessen am 23.09.2026 auf `Raspi2` (Pi 5, 16 GB):
+
+| Variante am Pi | Ergebnis |
+|---|---|
+| 8B oder 4B, Vulkan (GPU) | Absturz bei jeder echten Anfrage (`vk::OutOfHostMemoryError` im V3DV-Treiber). `/health` meldet trotzdem ok |
+| `BONSAI_NGL=0` über `start_llama_server.sh` | Hängt. Das Skript nimmt immer `bin/vulkan`, NGL ändert nur die Zahl der GPU-Layer |
+| 4B, `bin/cpu` + `PQ2_0` | Unbrauchbar, das Format ist nur auf x86 optimiert |
+| 4B, `bin/cpu` + `Q2_0_g64` | Funktioniert: 6,7 Token/s Einlesen, 3,9 Token/s Antwort. 565 Token dauern 100 s, eine echte Vault-Frage 3 bis 4 min |
+| Hailo-Beschleuniger | Nicht nutzbar, llama.cpp hat kein Backend dafür |
+
+Richtwerte für den Bench (`scripts/bonsai-bench.js`, rund 3.000 Token Kontext):
 
 - unter 30 s pro Antwort: passt
-- 30 bis 90 s: `ASSISTANT_CONTEXT_CHARS` auf 3000 senken oder ein kleineres Modell nehmen
-- über 90 s: kleineres Modell
-
-27B passt zwar in 16 GB RAM, ist auf der Pi-CPU aber vermutlich zu langsam für einen Chat.
+- 30 bis 90 s: `ASSISTANT_CONTEXT_CHARS` auf 3000 senken
+- über 90 s: kleineres Modell, `bash scripts/install-bonsai-mac.sh 4B`
 
 ## Grenzen
 
+- Schläft der Mac oder ist er aus, gibt es keine Modell-Antworten, nur Vault-Treffer. Befehle funktionieren weiter.
+- Vault-Auszüge gehen für jede Frage vom Pi zum Mac, verschlüsselt über Tailscale (WireGuard).
+- Die Tailscale-IP steht fest im LaunchAgent. Ändert sie sich, `install-bonsai-mac.sh` erneut ausführen.
 - Gescannte PDFs ohne Textebene findet die Suche nicht. Das Log meldet sie mit `PDF ohne Textebene`.
 - Der Dashboard-Chat ist nur im Heimnetz erreichbar, unterwegs läuft der Chat über Telegram.
 - Die Suche ist Volltext (BM25), keine semantische Suche. Synonyme findet sie nur, wenn sie im Text stehen.

@@ -621,7 +621,7 @@ async function sendChat() {
   btn.disabled = true; btn.setAttribute('aria-busy', 'true');
   cancel.hidden = false;
 
-  // Freitext läuft auf der CPU des Pi: dauert. Echte verstrichene Zeit zeigen,
+  // Freitext geht ans Modell auf dem Mac und kann dauern. Echte verstrichene Zeit zeigen,
   // plus die gemessene Dauer der letzten Antwort als Anhaltspunkt — keine erfundenen Werte.
   const isCmd = text.startsWith('/');
   const wait = document.createElement('div');
@@ -632,7 +632,7 @@ async function sendChat() {
   const tick = () => {
     const s = Math.floor((Date.now() - started) / 1000);
     if (isCmd) { wait.textContent = s >= 1 ? `Wird ausgeführt … ${s}s` : ''; return; }
-    const hint = _lastChatSec ? ` · letzte Antwort brauchte ${_lastChatSec}s` : ' · lokales Modell, kann eine Weile dauern';
+    const hint = _lastChatSec ? ` · letzte Antwort brauchte ${_lastChatSec}s` : ' · Modell auf dem Mac, kann etwas dauern';
     wait.innerHTML = `<span class="pulse"></span>Suche im Vault, Bonsai formuliert … ${s}s${hint}`;
   };
   tick();

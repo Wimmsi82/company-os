@@ -1,4 +1,8 @@
 # /etc/systemd/system/bonsai.service
+# NICHT EMPFOHLEN: Bonsai ist auf dem Pi 5 für den Chat zu langsam oder stürzt ab
+# (Messwerte in docs/ASSISTENT.md, Abschnitt Modellwahl). Standard ist Bonsai
+# auf dem Mac: scripts/install-bonsai-mac.sh. Diese Unit bleibt als Referenz.
+#
 # Lokales Sprachmodell (Bonsai, PrismML-llama.cpp) für den Company-OS-Assistenten.
 # Installation: scripts/install-bonsai-pi.sh (legt diese Unit an)
 #

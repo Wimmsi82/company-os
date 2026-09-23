@@ -2,6 +2,10 @@
 # scripts/install-bonsai-pi.sh
 # Installiert Bonsai (PrismML) auf dem Raspberry Pi 5 als systemd-Dienst.
 #
+# NICHT EMPFOHLEN: Auf dem Pi 5 stürzt Vulkan bei jeder Anfrage ab, und die CPU
+# schafft nur ~7 Token/s beim Einlesen (3 bis 4 min pro Vault-Frage). Messwerte
+# in docs/ASSISTENT.md, Abschnitt Modellwahl. Standard: scripts/install-bonsai-mac.sh.
+#
 # Nutzung:  bash scripts/install-bonsai-pi.sh [8B|4B|1.7B|27B]
 # Default:  8B — 27B passt in 16 GB RAM, ist auf der Pi-CPU aber vermutlich zu
 #           langsam für Chat. Nach der Installation mit scripts/bonsai-bench.js messen.

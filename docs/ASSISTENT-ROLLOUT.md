@@ -1,14 +1,14 @@
-# Detailplan: Persönlicher Assistent mit Bonsai auf dem Pi, Obsidian, Todoist und Company OS
+# Detailplan: Persönlicher Assistent mit Bonsai, Obsidian, Todoist und Company OS
 
 ## Kontext
 Ziel: Du chattest per Telegram (unterwegs) oder im Dashboard (zu Hause) mit deinem Assistenten. Er
 - sucht im Obsidian-Vault, auch in PDFs, die in Notizen verlinkt sind (etwa Verträge),
-- beantwortet Fragen mit dem lokalen Modell Bonsai auf dem Raspberry Pi 5 (16 GB), ohne API-Key,
+- beantwortet Fragen mit dem Modell Bonsai 8B auf dem Mac, den der Pi über Tailscale aufruft, ohne Anthropic-API-Key,
 - legt Todoist-Aufgaben und Notizen im Vault an,
 - zeigt dir Eskalationen, Tasks und Deliberationen von Company OS und steuert sie.
 
 Der Code ist fertig und getestet: 25/25 Tests grün. Er liegt im Entwurfs-PR https://github.com/Wimmsi82/company-os/pull/3.
-Dieser Plan beschreibt die **Inbetriebnahme auf dem Pi** und die **Nacharbeiten im Code**.
+Dieser Plan beschreibt die **Inbetriebnahme auf Pi und Mac** und die **Nacharbeiten im Code**.
 Jede Phase endet mit einem Prüfpunkt. Erst weitermachen, wenn er grün ist.
 
 Legende: 🧑 = machst du, 🤖 = mache ich in einer Session, ⏱ = geschätzter Aufwand
@@ -32,7 +32,7 @@ Dabei zwei echte Bugs gefunden und mitbehoben:
 
 ---
 
-## Phase 1: Pi vorbereiten 🧑 ⏱ 20 min
+## Phase 1: Pi vorbereiten ✅ (23.09.2026: Node 22.23.2 installiert, 116 GB frei, 53,8 °C, 38/38 Tests grün)
 1. **Node-Version prüfen:** `node --version`. `obsidian-headless` braucht **22 oder neuer**.
    Ist sie älter:
    ```bash
@@ -40,44 +40,45 @@ Dabei zwei echte Bugs gefunden und mitbehoben:
    sudo apt install -y nodejs
    cd ~/Dev/company-os && npm rebuild better-sqlite3   # native Bindings nach Node-Upgrade
    ```
-2. **Speicherplatz prüfen:** `df -h ~`. Nötig sind rund 12 GB frei: Modell 8B ca. 3 bis 5 GB, Build ca. 1 GB, dazu Vault und PDFs.
-3. **Kühlung:** Der Pi 5 läuft unter Dauerlast mit dem Modell. Ohne aktiven Kühler drosselt er, das siehst du mit `vcgencmd measure_temp` (über 80 °C = Drosselung).
+2. **Speicherplatz prüfen:** `df -h ~`. Nötig ist Platz für Vault und PDFs, das Modell liegt auf dem Mac.
+3. **Kühlung:** `vcgencmd measure_temp` (über 80 °C = Drosselung). Ohne Modell auf dem Pi unkritisch.
 4. **Swap:** `free -h`. Bei 16 GB ist kein Swap nötig. Falls zram aktiv ist, bleibt es so.
 
-**Prüfpunkt:** Node 22 oder neuer, mindestens 12 GB frei, `sudo systemctl status company-os` läuft wie bisher.
+**Prüfpunkt:** Node 22 oder neuer, `sudo systemctl status company-os` läuft wie bisher.
 
 ---
 
-## Phase 2: Bonsai installieren und messen 🧑 ⏱ 45 bis 90 min (Build und Download)
+## Phase 2: Bonsai auf dem Mac 🧑 ⏱ 15 min (plus Download, falls 8B fehlt)
+
+**Warum Mac statt Pi:** Am 23.09.2026 auf dem Pi gemessen. Vulkan stürzt bei jeder Anfrage ab, die CPU schafft mit 4B nur 6,7 Token/s beim Einlesen (565 Token = 100 s, echte Vault-Frage 3 bis 4 min). Details: `docs/ASSISTENT.md`, Abschnitt Modellwahl.
+
+**Pi aufräumen** (Modell-Reste aus den Tests beenden, RAM und CPU frei):
 ```bash
-cd ~/Dev/company-os
-git pull
-bash scripts/install-bonsai-pi.sh 8B
+pkill -f llama-server; sudo systemctl disable --now bonsai
 ```
-Das Skript installiert die Build-Tools und klont `PrismML-Eng/Bonsai-demo` nach `~/Dev/modelle/Bonsai-demo`. Danach startet es `setup.sh` mit `BONSAI_MODEL=8B`, erzwingt falls nötig `build_cpu_linux.sh` und richtet `bonsai.service` ein.
 
-Hinweise aus deiner Mac-Installation:
-- Der HuggingFace-Token ist optional. Gibst du etwas Falsches ein, lädt das Skript ohne Anmeldung weiter.
-- **Kein Stock-llama.cpp und kein Ollama.** Die ternären Formate laufen nur mit dem PrismML-Fork.
-
-**Messen:**
+**Mac:**
 ```bash
-sudo systemctl status bonsai
-curl -s localhost:8080/health
+cd ~/Dev/company-os && git pull
+bash scripts/install-bonsai-mac.sh          # Default 8B
+```
+Das Skript nutzt `~/Dev/modelle/Bonsai-demo`, lädt 8B nur wenn es fehlt, bindet `llama-server` (Metal) nur an die Tailscale-IP, legt einen API-Key an, richtet den LaunchAgent `ai.prism.bonsai` ein und gibt am Ende `LOCAL_LLM_URL` und `LOCAL_LLM_API_KEY` aus.
+
+Optional, damit der Mac am Netzteil wach bleibt: `sudo pmset -c sleep 0`.
+
+**Messen vom Pi aus** (die zwei Zeilen vorher in `~/Dev/company-os/.env` eintragen):
+```bash
+cd ~/Dev/company-os && git pull
 node scripts/bonsai-bench.js
 ```
-**Entscheidung nach dem Messwert:**
 
 | Gesamtzeit Benchmark | Maßnahme |
 |---|---|
 | unter 30 s | 8B behalten |
 | 30 bis 90 s | `ASSISTANT_CONTEXT_CHARS=3000` in `.env`, erneut messen |
-| über 90 s | `bash scripts/install-bonsai-pi.sh 4B` |
-| 4B immer noch über 90 s | `1.7B`, oder Freitext nur als Fallback nutzen und hauptsächlich Befehle |
+| über 90 s | `bash scripts/install-bonsai-mac.sh 4B` |
 
-27B testest du nur, wenn 8B unter 15 s bleibt. Es passt in den RAM, ist auf der CPU aber vermutlich 3- bis 4-mal langsamer.
-
-**Prüfpunkt:** `bonsai-bench.js` liefert eine sinnvolle deutsche Antwort unter 90 s. Trag den Messwert hier ein: ______
+**Prüfpunkt:** `bonsai-bench.js` liefert vom Pi aus eine sinnvolle deutsche Antwort unter 30 s. Ohne Key antwortet der Server mit 401. Messwert: ______
 
 ---
 
@@ -116,7 +117,8 @@ sudo systemctl daemon-reload && sudo systemctl enable --now obsidian-sync
 CLAUDE_MODE=cli
 VAULT_PATH=/home/admin/vault
 VAULT_NAME=Vault
-LOCAL_LLM_URL=http://127.0.0.1:8080
+LOCAL_LLM_URL=http://100.x.y.z:8080   # aus Phase 2 (Tailscale-IP des Macs)
+LOCAL_LLM_API_KEY=...                  # aus Phase 2
 ASSISTANT_CONTEXT_CHARS=6000          # oder Wert aus Phase 2
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
@@ -126,7 +128,7 @@ TODOIST_PROJECT_ID=                   # optional
 ```bash
 cd ~/Dev/company-os
 npm install                            # installiert pdf-parse
-npm test                               # 25/25 grün auch auf dem Pi (aarch64)?
+npm test                               # alle grün auch auf dem Pi (aarch64)?
 sudo systemctl restart company-os
 sudo journalctl -u company-os -f
 ```
@@ -160,7 +162,7 @@ In Telegram nacheinander ausführen und abhaken:
 | 10 | `/heute` | Todoist heute, Eskalationen, geänderte Notizen |
 | 11 | `/status`, `/eskalationen` | Daten aus Company OS |
 | 12 | `/deliberation Test` → `/nein` | Nichts startet |
-| 13 | `sudo systemctl stop bonsai`, dann Freitext | Meldung "nicht erreichbar" plus Vault-Treffer, danach `start bonsai` |
+| 13 | Mac zuklappen (Ruhezustand), dann Freitext | Nach wenigen Sekunden Meldung "nicht erreichbar" plus Vault-Treffer, nicht erst nach Minuten |
 | 14 | Dashboard http://192.168.188.153:3000 → Tab "Assistent" | Status oben rechts grün, Chat funktioniert |
 | 15 | Von einem fremden Telegram-Konto an den Bot schreiben | Keine Antwort, im Log steht "fremde Chat-ID ignoriert" |
 
@@ -198,21 +200,22 @@ In Telegram nacheinander ausführen und abhaken:
 
 ## Risiken (zuerst lesen)
 0. **Falls der ursprüngliche produktive Pi (mit der echten `db/company-os.sqlite`) doch noch existiert:** Das rekonstruierte Schema in `src/db/migrate.js` ist aus der Code-Nutzung abgeleitet, nicht aus der Original-Datei. `CREATE TABLE IF NOT EXISTS` überschreibt nichts, eine bereits vorhandene `.sqlite` mit abweichenden Spalten kann aber zu Laufzeitfehlern führen. Vor dem ersten Start auf diesem Pi: `sqlite3 db/company-os.sqlite ".schema"` gegen `src/db/migrate.js` gegenlesen, oder die Datei vorher sichern (`cp db/company-os.sqlite db/company-os.sqlite.bak`) und mich mit dem Original-Schema kontaktieren, bevor der Dienst neu startet.
-1. **Tempo auf dem Pi ist unbekannt.** Die 47 Token/s stammen von einem M5 Max mit GPU, der Pi rechnet nur auf der CPU. Freitext kann 30 bis 120 s dauern. Die Befehle bleiben immer schnell. Gegenmittel: Phase 2 messen, kleineres Modell wählen.
+1. **Mac muss wach sein.** Schläft er, gibt es nur Vault-Treffer statt Antworten. Befehle funktionieren weiter. Tempo auf dem M5 (nicht Max) ist noch ungemessen, Phase 2 zeigt es.
 2. **Verträge liegen auf dem Pi.** Er ist nur im LAN erreichbar, Telegram läuft über ausgehende Verbindungen. Wer Zugang zum Pi hat, hat Zugang zum Vault. Deshalb SSH nur mit Key, kein Passwort-Login.
 3. **Telegram-Server sehen Chat-Inhalte**, also auch Auszüge aus Verträgen in den Antworten. Ist dir das bei sensiblen Dokumenten zu viel, nutzt du diese nur im Dashboard.
 4. **Sync-Konflikte:** Der Assistent schreibt nur neue Dateien in `Inbox/` und hängt an bestehende nur an. Bearbeitest du dieselbe Notiz gleichzeitig am Mac, erzeugt Obsidian eine Konfliktdatei. Es geht nichts verloren, aber du musst aufräumen.
-5. **Die CPU ist geteilt:** Bonsai, Deliberationen (Claude CLI) und Indexierung laufen parallel. `bonsai.service` hat `Nice=5`, der Assistent stellt Anfragen nacheinander in eine Warteschlange.
+5. **Vault-Auszüge gehen über das Netz:** Pi → Mac, verschlüsselt über Tailscale. Der Server auf dem Mac hört nur auf der Tailscale-IP und verlangt einen API-Key.
 6. **Der Code wurde nur mit Fakes getestet.** Echter `llama-server`, Todoist und Telegram laufen erst in Phase 6 zum ersten Mal zusammen.
 
 ## Rollback
 ```bash
-sudo systemctl stop bonsai obsidian-sync
+sudo systemctl stop obsidian-sync
+launchctl bootout gui/$(id -u)/ai.prism.bonsai   # auf dem Mac
 # In .env TELEGRAM_BOT_TOKEN leer lassen → Bot aus (Push-Nachrichten dann auch aus)
 git checkout main && npm install && sudo systemctl restart company-os
 ```
 Vault-Kopie und Index lassen sich gefahrlos löschen: `rm -rf ~/vault db/vault-index.sqlite db/assistant.sqlite`.
 
 ## Reihenfolge und Zeitbedarf
-Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7. Für dich sind das rund 2,5 bis 3,5 Stunden, der größte Block ist der Build und Download in Phase 2.
+Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7. Für dich sind das rund 1,5 bis 2,5 Stunden, der größte Block ist die erste Obsidian-Synchronisation in Phase 3.
 Phase 8 kommt danach, nach Priorität. Meine Empfehlung: zuerst 8.1 und 8.2 (klein, sofort spürbar), dann 8.7.
