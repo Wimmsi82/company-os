@@ -1,5 +1,11 @@
 # CHANGELOG — Company OS
 
+## [2026-09-23] — Bonsai-Installer: BONSAI_FAMILY fehlte
+
+- Geändert: `scripts/install-bonsai-pi.sh`, `deploy/bonsai.service` — Bonsai 2 (Familie `bonsai2`) gibt es nur als 27B, jede kleinere Größe (8B/4B/1.7B) läuft über `BONSAI_FAMILY=ternary`. Der Installer leitet die Familie jetzt automatisch aus der gewünschten Größe ab und trägt sie auch in die systemd-Unit ein (vorher wurde nur `BONSAI_MODEL` templated, `BONSAI_FAMILY` blieb auf `bonsai2` stehen)
+- Gefunden beim ersten echten Lauf auf einem Raspberry Pi 5 (`bash scripts/install-bonsai-pi.sh 8B` brach mit `[ERR] Bonsai 2 is 27B.` ab)
+- User-Impact: `install-bonsai-pi.sh 8B|4B|1.7B` funktioniert jetzt ohne manuellen Eingriff
+
 ## [2026-09-23] — Fehlende src/db/ und src/vault/index.js rekonstruiert
 
 - Erstellt: `src/db/migrate.js`, `src/db/index.js` — beide Dateien fehlten im gesamten Repo (auch auf dem ersten erreichbaren Pi, frischer Clone bestätigte es), rekonstruiert aus allen ~65 `db.*`-Aufrufen im Code (agents/, scheduler/, api/, webhooks/); 15 Tabellen inkl. der in diesem Changelog dokumentierten v2–v5-Erweiterungen

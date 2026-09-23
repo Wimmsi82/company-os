@@ -5,6 +5,11 @@
 # Modell wechseln: BONSAI_MODEL anpassen (27B, 8B, 4B, 1.7B), dann
 #   sudo systemctl daemon-reload && sudo systemctl restart bonsai
 # Nur localhost: Company OS spricht es über LOCAL_LLM_URL=http://127.0.0.1:8080 an.
+#
+# WICHTIG: Bonsai 2 (Familie "bonsai2") gibt es nur als 27B. Jede kleinere
+# Größe (8B, 4B, 1.7B) läuft über die Ternary-Bonsai-Familie — also immer
+# passend setzen: BONSAI_MODEL=27B → BONSAI_FAMILY=bonsai2, sonst "ternary".
+# scripts/install-bonsai-pi.sh setzt beide Werte automatisch zusammen.
 
 [Unit]
 Description=Bonsai llama-server (lokales LLM)
@@ -15,7 +20,7 @@ Type=simple
 User=admin
 WorkingDirectory=/home/admin/Dev/modelle/Bonsai-demo
 Environment=BONSAI_MODEL=8B
-Environment=BONSAI_FAMILY=bonsai2
+Environment=BONSAI_FAMILY=ternary
 Environment=BONSAI_HOST=127.0.0.1
 Environment=BONSAI_CTX=8192
 ExecStart=/home/admin/Dev/modelle/Bonsai-demo/scripts/start_llama_server.sh

@@ -12,6 +12,9 @@ DIR="$HOME/Dev/modelle/Bonsai-demo"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 
 case "$MODEL" in 27B|8B|4B|1.7B) ;; *) echo "Unbekannte Größe: $MODEL (27B|8B|4B|1.7B)"; exit 1;; esac
+# Bonsai 2 (das Standard-Familie im Demo-Repo) gibt es nur als 27B.
+# Alle kleineren Größen laufen über die Ternary-Bonsai-Familie.
+if [ "$MODEL" = "27B" ]; then FAMILY="bonsai2"; else FAMILY="ternary"; fi
 [ "$(uname -m)" = "aarch64" ] || echo "Hinweis: kein aarch64 ($(uname -m)) — Skript ist für den Pi gedacht."
 
 echo "── 1/4 Build-Werkzeuge"
@@ -22,15 +25,15 @@ echo "── 2/4 Bonsai-demo nach $DIR"
 mkdir -p "$(dirname "$DIR")"
 if [ -d "$DIR/.git" ]; then git -C "$DIR" pull --ff-only; else git clone https://github.com/PrismML-Eng/Bonsai-demo.git "$DIR"; fi
 
-echo "── 3/4 Setup (lädt Modell $MODEL, baut llama.cpp-Fork für CPU/arm64)"
+echo "── 3/4 Setup (lädt Modell $FAMILY/$MODEL, baut llama.cpp-Fork für CPU/arm64)"
 cd "$DIR"
 # setup.sh überspringt bereits erledigte Schritte (Modelle, Binaries)
-BONSAI_MODEL="$MODEL" ./setup.sh
+BONSAI_FAMILY="$FAMILY" BONSAI_MODEL="$MODEL" ./setup.sh
 # Falls setup.sh auf Linux keine passenden Binaries lädt, CPU-Build erzwingen
 [ -d bin/cpu ] || ./scripts/build_cpu_linux.sh
 
 echo "── 4/4 systemd-Dienst"
-sed "s/^Environment=BONSAI_MODEL=.*/Environment=BONSAI_MODEL=$MODEL/" "$REPO/deploy/bonsai.service" \
+sed "s/^Environment=BONSAI_MODEL=.*/Environment=BONSAI_MODEL=$MODEL/; s/^Environment=BONSAI_FAMILY=.*/Environment=BONSAI_FAMILY=$FAMILY/" "$REPO/deploy/bonsai.service" \
   | sed "s#/home/admin#$HOME#g; s/^User=admin/User=$USER/" \
   | sudo tee /etc/systemd/system/bonsai.service >/dev/null
 sudo systemctl daemon-reload
