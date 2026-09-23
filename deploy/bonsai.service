@@ -1,0 +1,31 @@
+# /etc/systemd/system/bonsai.service
+# Lokales Sprachmodell (Bonsai, PrismML-llama.cpp) für den Company-OS-Assistenten.
+# Installation: scripts/install-bonsai-pi.sh (legt diese Unit an)
+#
+# Modell wechseln: BONSAI_MODEL anpassen (27B, 8B, 4B, 1.7B), dann
+#   sudo systemctl daemon-reload && sudo systemctl restart bonsai
+# Nur localhost: Company OS spricht es über LOCAL_LLM_URL=http://127.0.0.1:8080 an.
+
+[Unit]
+Description=Bonsai llama-server (lokales LLM)
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/Dev/modelle/Bonsai-demo
+Environment=BONSAI_MODEL=8B
+Environment=BONSAI_FAMILY=bonsai2
+Environment=BONSAI_HOST=127.0.0.1
+Environment=BONSAI_CTX=8192
+ExecStart=/home/admin/Dev/modelle/Bonsai-demo/scripts/start_llama_server.sh
+Restart=on-failure
+RestartSec=15
+# Pi 5 hat 4 Kerne — Company OS und Obsidian Sync sollen nicht verhungern
+Nice=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bonsai
+
+[Install]
+WantedBy=multi-user.target

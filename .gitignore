@@ -5,7 +5,7 @@ node_modules/
 .env
 
 # Datenbank — enthält persönliche Daten
-db/
+/db/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

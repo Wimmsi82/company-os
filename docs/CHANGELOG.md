@@ -1,5 +1,24 @@
 # CHANGELOG — Company OS
 
+## [2026-09-23] — Assistent: Bonsai lokal + Obsidian + Todoist + Chat
+
+- Erstellt: `src/vault/indexer.js` — Volltext-Index (SQLite FTS5, eigene DB `db/vault-index.sqlite`) über den ganzen Vault inkl. Text verlinkter PDFs (`[[x.pdf]]`, `![[x.pdf]]`, `[t](pfad/x.pdf)`); Umlaut-Varianten (ü = ue); inkrementell per mtime
+- Erstellt: `src/vault/notes.js` — sicheres Lesen/Schreiben: nur `.md` im Vault, neue Notizen nur in `Inbox/` (Präfix Idee/Ref/Log), Ergänzen mit Backup in `.assistant-backup/`
+- Erstellt: `src/llm/local.js` — Client für lokales Modell (Bonsai über llama-server, OpenAI-kompatibel)
+- Erstellt: `src/assistant/` — Chat-Kern: deterministische Befehle + RAG-Freitext, Verlauf pro Chat (`db/assistant.sqlite`), Company-OS-Anbindung
+- Erstellt: `src/integrations/todoist.js` — Todoist API v1 (Aufgabe anlegen, Filter "today | overdue")
+- Erstellt: `src/notifications/telegram-bot.js` — Telegram als Chat (Long Polling, nur `TELEGRAM_CHAT_ID`)
+- Erstellt: `src/services/escalations.js` — Eskalation beantworten, gemeinsam für API und Assistent
+- Erstellt: `deploy/bonsai.service`, `deploy/obsidian-sync.service`, `scripts/install-bonsai-pi.sh`, `scripts/bonsai-bench.js`, `docs/ASSISTENT.md`
+- Erstellt: `tests/` — 25 Tests (Indexer, Notizen, Assistent, LLM-Client, Telegram)
+- Geändert: `src/api/routes.js` — `POST /api/chat`, `GET /api/assistant/health`; Eskalations-Antwort über Service (404 bei unbekannter ID)
+- Geändert: `src/ui/index.html` — neuer Tab "Assistent" (Chat mit Wartezeit-Anzeige, Abbrechen, Status von Modell/Vault/Todoist)
+- Geändert: `src/index.js` — `ANTHROPIC_API_KEY` nur noch im API-Modus Pflicht; startet Vault-Index und Telegram-Bot
+- Geändert: `src/scheduler/cron.js` — Vault-Index alle `VAULT_INDEX_MINUTES`, voller Neuaufbau 03:00
+- Geändert: `.gitignore` — `db/` → `/db/` (schloss bisher auch `src/db/` aus, daher fehlt `src/db/` im Repo)
+- Geändert: `package.json` — `pdf-parse`, Test-Script `node --test tests/*.test.js`
+- User-Impact: Per Telegram oder Dashboard Fragen an die eigenen Unterlagen stellen ("Wann kann ich den Mietvertrag kündigen?"), Aufgaben nach Todoist schicken, Notizen anlegen und Company OS steuern — Modell läuft lokal am Pi, ohne API-Key
+
 ## [2026-07-18] — Globale Skill-Installation (Anthropic Skills)
 
 - Erstellt: `scripts/install-global-skills.sh` — installiert Skills aus dem offiziellen Anthropic Skills-Repo (https://github.com/anthropics/skills) global nach `~/.claude/skills`

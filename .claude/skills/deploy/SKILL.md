@@ -49,3 +49,11 @@ sudo systemctl status company-os
 ## Referenzen
 @company-os.service
 @CLAUDE.md
+
+## Assistent (Bonsai + Obsidian Sync)
+
+Zusätzliche Dienste neben `company-os.service`, Anleitung in `docs/ASSISTENT.md`:
+
+- `bonsai.service`: `llama-server` aus `~/Dev/modelle/Bonsai-demo` (PrismML-Fork), nur auf `127.0.0.1:8080`. Installation mit `bash scripts/install-bonsai-pi.sh 8B`, Tempo messen mit `node scripts/bonsai-bench.js`.
+- `obsidian-sync.service`: `ob sync --path ~/vault --continuous` (npm `obsidian-headless`, braucht Node 22+).
+- Diagnose: `curl -s localhost:3000/api/assistant/health`, `journalctl -u bonsai -u obsidian-sync -u company-os -f`.

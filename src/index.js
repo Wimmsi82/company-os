@@ -12,8 +12,9 @@ const PORT = process.env.PORT ?? 3000;
 
 // ── Checks ──────────────────────────────────────────────
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  log.error('ANTHROPIC_API_KEY fehlt — bitte .env anlegen');
+// Nur der API-Modus braucht einen Key; im CLI-Modus läuft alles über das Claude-Abo
+if ((process.env.CLAUDE_MODE ?? 'cli') === 'api' && !process.env.ANTHROPIC_API_KEY) {
+  log.error('ANTHROPIC_API_KEY fehlt — bitte .env anlegen oder CLAUDE_MODE=cli setzen');
   process.exit(1);
 }
 
@@ -40,6 +41,12 @@ app.listen(PORT, () => {
 // ── Autonomer Scheduler ──────────────────────────────────
 
 cron.start();
+
+// ── Assistent: Vault-Index + Telegram-Chat ───────────────
+
+require('./vault/indexer').syncIndex()
+  .catch(err => log.error('[Vault-Index] Erststart fehlgeschlagen: ' + err.message));
+require('./notifications/telegram-bot').start();
 
 // ── Graceful Shutdown ────────────────────────────────────
 

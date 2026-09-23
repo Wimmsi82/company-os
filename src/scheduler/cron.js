@@ -24,6 +24,15 @@ function start() {
     }
   });
 
+  // ── Vault-Index aktuell halten (Assistent) ──
+  const vaultIndex = require('../vault/indexer');
+  cron.schedule(`*/${parseInt(process.env.VAULT_INDEX_MINUTES ?? '10')} * * * *`, () => {
+    vaultIndex.syncIndex().catch(err => log.error('[Cron] Vault-Index: ' + err.message));
+  });
+  cron.schedule('0 3 * * *', () => {
+    vaultIndex.syncIndex({ full: true }).catch(err => log.error('[Cron] Vault-Index (voll): ' + err.message));
+  });
+
   // ── Täglicher Strategiepuls — 08:00 Uhr (DYNAMISCH) ──
   cron.schedule('0 8 * * *', async () => {
     log.info('[Cron] Täglicher Strategiepuls …');
