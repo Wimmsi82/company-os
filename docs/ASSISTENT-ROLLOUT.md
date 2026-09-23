@@ -3,7 +3,7 @@
 ## Kontext
 Ziel: Du chattest per Telegram (unterwegs) oder im Dashboard (zu Hause) mit deinem Assistenten. Er
 - sucht im Obsidian-Vault, auch in PDFs, die in Notizen verlinkt sind (etwa Verträge),
-- beantwortet Fragen mit dem Modell Bonsai 8B auf dem Mac, den der Pi über Tailscale aufruft, ohne Anthropic-API-Key,
+- beantwortet Fragen mit dem Modell Bonsai 2 27B auf dem Mac, den der Pi über Tailscale aufruft, ohne Anthropic-API-Key,
 - legt Todoist-Aufgaben und Notizen im Vault an,
 - zeigt dir Eskalationen, Tasks und Deliberationen von Company OS und steuert sie.
 
@@ -48,7 +48,7 @@ Dabei zwei echte Bugs gefunden und mitbehoben:
 
 ---
 
-## Phase 2: Bonsai auf dem Mac 🧑 ⏱ 15 min (plus Download, falls 8B fehlt)
+## Phase 2: Bonsai auf dem Mac 🧑 ⏱ 15 min (27B liegt schon auf dem Mac)
 
 **Warum Mac statt Pi:** Am 23.09.2026 auf dem Pi gemessen. Vulkan stürzt bei jeder Anfrage ab, die CPU schafft mit 4B nur 6,7 Token/s beim Einlesen (565 Token = 100 s, echte Vault-Frage 3 bis 4 min). Details: `docs/ASSISTENT.md`, Abschnitt Modellwahl.
 
@@ -59,10 +59,10 @@ pkill -f llama-server; sudo systemctl disable --now bonsai
 
 **Mac:**
 ```bash
-cd ~/Dev/company-os && git pull
-bash scripts/install-bonsai-mac.sh          # Default 8B
+cd ~/Bernhard/Dev/company-os && git pull
+bash scripts/install-bonsai-mac.sh          # Default 27B
 ```
-Das Skript nutzt `~/Dev/modelle/Bonsai-demo`, lädt 8B nur wenn es fehlt, bindet `llama-server` (Metal) nur an die Tailscale-IP, legt einen API-Key an, richtet den LaunchAgent `ai.prism.bonsai` ein und gibt am Ende `LOCAL_LLM_URL` und `LOCAL_LLM_API_KEY` aus.
+Das Skript nutzt `~/Dev/modelle/Bonsai-demo`, lädt das Modell nur, wenn es fehlt, bindet `llama-server` (Metal) nur an die Tailscale-IP, legt einen API-Key an, richtet den LaunchAgent `ai.prism.bonsai` ein und gibt am Ende `LOCAL_LLM_URL` und `LOCAL_LLM_API_KEY` aus.
 
 Optional, damit der Mac am Netzteil wach bleibt: `sudo pmset -c sleep 0`.
 
@@ -74,9 +74,9 @@ node scripts/bonsai-bench.js
 
 | Gesamtzeit Benchmark | Maßnahme |
 |---|---|
-| unter 30 s | 8B behalten |
+| unter 30 s | 27B behalten |
 | 30 bis 90 s | `ASSISTANT_CONTEXT_CHARS=3000` in `.env`, erneut messen |
-| über 90 s | `bash scripts/install-bonsai-mac.sh 4B` |
+| über 90 s | `bash scripts/install-bonsai-mac.sh 8B` (lädt ca. 2 GB) |
 
 **Prüfpunkt:** `bonsai-bench.js` liefert vom Pi aus eine sinnvolle deutsche Antwort unter 30 s. Ohne Key antwortet der Server mit 401. Messwert: ______
 

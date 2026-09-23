@@ -307,7 +307,7 @@ npm run setup
 ## 18. Persönlicher Assistent (Chat)
 
 **Was es tut:**
-Chat über Telegram und den Dashboard-Tab "Assistent". Er beantwortet Fragen aus dem Obsidian-Vault, auch aus verlinkten PDFs wie Verträgen, legt Todoist-Aufgaben und Vault-Notizen an und steuert Company OS. Das Sprachmodell (Bonsai 8B) läuft auf dem Mac, der Pi ruft es über Tailscale auf.
+Chat über Telegram und den Dashboard-Tab "Assistent". Er beantwortet Fragen aus dem Obsidian-Vault, auch aus verlinkten PDFs wie Verträgen, legt Todoist-Aufgaben und Vault-Notizen an und steuert Company OS. Das Sprachmodell (Bonsai 2 27B) läuft auf dem Mac, der Pi ruft es über Tailscale auf.
 
 **Wie es funktioniert:**
 - Befehle laufen fest im Code, Freitext geht an Bonsai, mit den Vault-Treffern als Kontext

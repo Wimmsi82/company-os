@@ -16,7 +16,7 @@ Raspberry Pi 5 (16 GB)
         │ Tailscale (verschlüsselt), API-Key
         ▼
 Mac (M5, 24 GB)
- └─ LaunchAgent ai.prism.bonsai   llama-server (Metal), Bonsai 8B, nur auf der Tailscale-IP
+ └─ LaunchAgent ai.prism.bonsai   llama-server (Metal), Bonsai 2 27B, nur auf der Tailscale-IP
 ```
 
 ## Wie es arbeitet
@@ -50,8 +50,8 @@ Voraussetzung: Company OS läuft auf dem Pi (siehe `INSTALL.md`), Node.js **22+*
 ### 1. Bonsai auf dem Mac
 
 ```bash
-cd ~/Dev/company-os && git pull
-bash scripts/install-bonsai-mac.sh        # Default 8B
+cd <company-os-Ordner auf dem Mac> && git pull
+bash scripts/install-bonsai-mac.sh        # Default 27B; schneller, aber schwächer: 8B
 ```
 
 Das Skript
@@ -111,7 +111,7 @@ Richtwerte für den Bench (`scripts/bonsai-bench.js`, rund 3.000 Token Kontext):
 
 - unter 30 s pro Antwort: passt
 - 30 bis 90 s: `ASSISTANT_CONTEXT_CHARS` auf 3000 senken
-- über 90 s: kleineres Modell, `bash scripts/install-bonsai-mac.sh 4B`
+- über 90 s: kleineres Modell, `bash scripts/install-bonsai-mac.sh 8B`
 
 ## Grenzen
 

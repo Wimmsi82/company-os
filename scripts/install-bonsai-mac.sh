@@ -4,11 +4,11 @@
 # Der Pi ruft das Modell über Tailscale auf. Der Server hört nur auf der
 # Tailscale-IP und verlangt einen API-Key.
 #
-# Nutzung:  bash scripts/install-bonsai-mac.sh [8B|4B|1.7B]      (Default: 8B)
+# Nutzung:  bash scripts/install-bonsai-mac.sh [27B|8B|4B|1.7B]      (Default: 27B)
 # Optional: BONSAI_DIR=…  BONSAI_PORT=8080  BONSAI_GGUF=/pfad/zur/datei.gguf
 set -euo pipefail
 
-MODEL="${1:-8B}"
+MODEL="${1:-27B}"
 DIR="${BONSAI_DIR:-$HOME/Dev/modelle/Bonsai-demo}"
 PORT="${BONSAI_PORT:-8080}"
 LABEL="ai.prism.bonsai"
@@ -16,7 +16,10 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 KEYFILE="$HOME/.config/bonsai/api-key"
 LOG="$HOME/Library/Logs/bonsai.log"
 
-case "$MODEL" in 8B|4B|1.7B) ;; *) echo "Unbekannte Größe: $MODEL (8B|4B|1.7B)"; exit 1;; esac
+case "$MODEL" in 27B|8B|4B|1.7B) ;; *) echo "Unbekannte Größe: $MODEL (27B|8B|4B|1.7B)"; exit 1;; esac
+# Bonsai 2 gibt es nur als 27B, kleinere Größen gehören zur Ternary-Familie
+if [ "$MODEL" = "27B" ]; then FAMILY="bonsai2"; else FAMILY="ternary"; fi
+MODELDIR="models/$FAMILY-gguf/$MODEL"
 [ "$(uname -s)" = "Darwin" ] || { echo "Dieses Skript ist für macOS. Am Pi: scripts/install-bonsai-pi.sh (nicht empfohlen)."; exit 1; }
 
 echo "── 1/5 Bonsai-demo in $DIR"
@@ -29,19 +32,20 @@ cd "$DIR"
 find_model() {
   if [ -n "${BONSAI_GGUF:-}" ]; then echo "$BONSAI_GGUF"; return; fi
   # PQ2_0 ist laut Bonsai-README auf Metal das schnellere Format, sonst das g64-Format
-  ls models/ternary-gguf/"$MODEL"/*PQ2_0*.gguf 2>/dev/null | head -1 && return
-  ls models/ternary-gguf/"$MODEL"/*g64*.gguf 2>/dev/null | head -1
+  # mmproj-Dateien sind der Bild-Projektor, nicht das Sprachmodell
+  ls "$MODELDIR"/*PQ2_0*.gguf 2>/dev/null | grep -v mmproj | head -1 | grep . && return
+  ls "$MODELDIR"/*g64*.gguf 2>/dev/null | grep -v mmproj | head -1
 }
 
 GGUF="$(find_model || true)"
 if [ -z "$GGUF" ]; then
   echo "── 2/5 Modell $MODEL fehlt, starte setup.sh (lädt nur, was fehlt)"
-  BONSAI_FAMILY=ternary BONSAI_MODEL="$MODEL" ./setup.sh
+  BONSAI_FAMILY="$FAMILY" BONSAI_MODEL="$MODEL" ./setup.sh
   GGUF="$(find_model || true)"
 else
   echo "── 2/5 Modell vorhanden"
 fi
-[ -n "$GGUF" ] && [ -f "$GGUF" ] || { echo "Keine GGUF-Datei für $MODEL unter $DIR/models/ternary-gguf/$MODEL gefunden."; exit 1; }
+[ -n "$GGUF" ] && [ -f "$GGUF" ] || { echo "Keine GGUF-Datei für $MODEL unter $DIR/$MODELDIR gefunden."; exit 1; }
 case "$GGUF" in /*) ;; *) GGUF="$DIR/$GGUF";; esac
 echo "   Modell: $GGUF"
 
