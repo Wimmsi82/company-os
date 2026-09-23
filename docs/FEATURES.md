@@ -315,7 +315,7 @@ Chat über Telegram und den Dashboard-Tab "Assistent". Er beantwortet Fragen aus
 - Schreibt nur nach `Inbox/` oder ergänzt bestehende Notizen, mit Backup
 - Deliberationen weiter über Claude, Start nur nach Bestätigung
 
-Details und Einrichtung: `docs/ASSISTENT.md`
+Details und Einrichtung: `docs/ASSISTENT.md`, Inbetriebnahme Schritt für Schritt: `docs/ASSISTENT-ROLLOUT.md`
 
 ---
 

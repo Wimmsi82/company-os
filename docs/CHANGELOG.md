@@ -9,7 +9,7 @@
 - Erstellt: `src/integrations/todoist.js` — Todoist API v1 (Aufgabe anlegen, Filter "today | overdue")
 - Erstellt: `src/notifications/telegram-bot.js` — Telegram als Chat (Long Polling, nur `TELEGRAM_CHAT_ID`)
 - Erstellt: `src/services/escalations.js` — Eskalation beantworten, gemeinsam für API und Assistent
-- Erstellt: `deploy/bonsai.service`, `deploy/obsidian-sync.service`, `scripts/install-bonsai-pi.sh`, `scripts/bonsai-bench.js`, `docs/ASSISTENT.md`
+- Erstellt: `deploy/bonsai.service`, `deploy/obsidian-sync.service`, `scripts/install-bonsai-pi.sh`, `scripts/bonsai-bench.js`, `docs/ASSISTENT.md`, `docs/ASSISTENT-ROLLOUT.md` (Detailplan Inbetriebnahme)
 - Erstellt: `tests/` — 25 Tests (Indexer, Notizen, Assistent, LLM-Client, Telegram)
 - Geändert: `src/api/routes.js` — `POST /api/chat`, `GET /api/assistant/health`; Eskalations-Antwort über Service (404 bei unbekannter ID)
 - Geändert: `src/ui/index.html` — neuer Tab "Assistent" (Chat mit Wartezeit-Anzeige, Abbrechen, Status von Modell/Vault/Todoist)
