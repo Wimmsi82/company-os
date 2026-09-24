@@ -48,7 +48,7 @@ Dabei zwei echte Bugs gefunden und mitbehoben:
 
 ---
 
-## Phase 2: Bonsai auf dem Mac 🧑 ⏱ 15 min (27B liegt schon auf dem Mac)
+## Phase 2: Bonsai auf dem Mac ✅ (24.09.2026)
 
 **Warum Mac statt Pi:** Am 23.09.2026 auf dem Pi gemessen. Vulkan stürzt bei jeder Anfrage ab, die CPU schafft mit 4B nur 6,7 Token/s beim Einlesen (565 Token = 100 s, echte Vault-Frage 3 bis 4 min). Details: `docs/ASSISTENT.md`, Abschnitt Modellwahl.
 
@@ -78,7 +78,7 @@ node scripts/bonsai-bench.js
 | 30 bis 90 s | `ASSISTANT_CONTEXT_CHARS=3000` in `.env`, erneut messen |
 | über 90 s | `bash scripts/install-bonsai-mac.sh 8B` (lädt ca. 2 GB) |
 
-**Prüfpunkt:** `bonsai-bench.js` liefert vom Pi aus eine sinnvolle deutsche Antwort unter 30 s. Ohne Key antwortet der Server mit 401. Messwert: ______
+**Prüfpunkt:** `bonsai-bench.js` liefert vom Pi aus eine sinnvolle deutsche Antwort unter 30 s. Ohne Key antwortet der Server mit 401. Messwert: **26,3 s** (27B, 3.256 Token, 171,9 Token/s Einlesen, 12,3 Token/s Antwort), 401 ohne Key bestätigt. ✅
 
 ---
 

@@ -107,6 +107,8 @@ Bonsai läuft auf dem Mac, weil der Pi 5 für Fragen an den Vault zu langsam ist
 | 4B, `bin/cpu` + `Q2_0_g64` | Funktioniert: 6,7 Token/s Einlesen, 3,9 Token/s Antwort. 565 Token dauern 100 s, eine echte Vault-Frage 3 bis 4 min |
 | Hailo-Beschleuniger | Nicht nutzbar, llama.cpp hat kein Backend dafür |
 
+Zum Vergleich auf dem Mac (M5, 24 GB), Bonsai 2 27B, vom Pi aus über Tailscale gemessen am 24.09.2026: 3.256 Token Kontext in 26,3 s, 171,9 Token/s Einlesen, 12,3 Token/s Antwort. Antwort korrekt.
+
 Richtwerte für den Bench (`scripts/bonsai-bench.js`, rund 3.000 Token Kontext):
 
 - unter 30 s pro Antwort: passt
