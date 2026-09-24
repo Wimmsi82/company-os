@@ -1,5 +1,16 @@
 # CHANGELOG — Company OS
 
+## [2026-09-24] — Keine Doppelpunkte mehr in Dateinamen
+
+- Grund: Obsidian und Obsidian Sync (`obsidian-headless`) lehnen `:` in Dateinamen ab ("Ignoring remote file name with illegal characters"). 851 Notizen mit `Ref:`/`Idee:`/`Log:` im Namen fehlten dadurch auf dem Pi (Mac 5.647 Notizen, Pi 4.698)
+- Geändert: `src/vault/notes.js` — neue Notizen heissen `Idee - Titel.md` statt `Idee: Titel.md`
+- Geändert: `src/assistant/index.js` — `/notiz` nimmt `Idee: Titel` und `Idee - Titel` an
+- Geändert: `src/vault/index.js` — Cycle-Logs und Metrik-Alerts heissen `Log - …`; Kontext-Filter erkennt beide Schreibweisen
+- Geändert: `src/vault/search.js` — Cycle-History findet `Log - …` und alte `Log: …`
+- Erstellt: `scripts/rename-colon-notes.js` — benennt bestehende Dateien mit `:` um und passt Wikilinks (inkl. Alias, Überschrift, Einbettung), Markdown-Links und Canvas an; Probelauf als Standard, Backup und `--undo`
+- Erstellt: `tests/rename-colon-notes.test.js` (3), `tests/vault-cyclelog.test.js` (2); `/notiz`-Test um ` - `-Eingabe ergänzt
+- User-Impact: Notizen vom Assistenten und von Company OS kommen per Obsidian Sync auf Mac und iPhone; nach dem Umbenennen ist der ganze Vault auf dem Pi durchsuchbar
+
 ## [2026-09-23] — Bonsai läuft auf dem Mac statt auf dem Pi
 
 - Grund: Messung auf dem Pi 5 (`Raspi2`). Vulkan stürzt bei jeder Anfrage ab (`vk::OutOfHostMemoryError`), `BONSAI_NGL=0` über das Startskript nimmt trotzdem das Vulkan-Binary, `PQ2_0` ist auf ARM unbrauchbar, und das CPU-Build mit `Q2_0_g64` schafft nur 6,7 Token/s beim Einlesen (echte Vault-Frage 3 bis 4 min). Tabelle in `docs/ASSISTENT.md`, Abschnitt Modellwahl

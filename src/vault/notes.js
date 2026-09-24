@@ -8,6 +8,8 @@ const path    = require('path');
 const indexer = require('./indexer');
 
 const PREFIXES = ['Idee', 'Ref', 'Log'];
+// "Idee - Titel" statt "Idee: Titel": Obsidian und Obsidian Sync lehnen ":" in Dateinamen ab
+const SEP = ' - ';
 const INBOX = 'Inbox';
 
 function safePath(relPath) {
@@ -65,9 +67,9 @@ function createInboxNote({ prefix, title, body, tags = [] }) {
   const root = path.resolve(indexer.vaultPath());
   fs.mkdirSync(path.join(root, INBOX), { recursive: true });
 
-  let name = `${prefix}: ${t}`;
+  let name = `${prefix}${SEP}${t}`;
   let n = 2;
-  while (fs.existsSync(path.join(root, INBOX, `${name}.md`))) name = `${prefix}: ${t} ${n++}`;
+  while (fs.existsSync(path.join(root, INBOX, `${name}.md`))) name = `${prefix}${SEP}${t} ${n++}`;
 
   const fm = [
     '---',

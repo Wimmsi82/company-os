@@ -34,9 +34,9 @@ test('readNote hängt den PDF-Text an und blättert mit offset', () => {
 
 test('createInboxNote: nur Inbox, Präfix Pflicht, überschreibt nie', () => {
   const a = notes.createInboxNote({ prefix: 'Idee', title: 'Bonsai / Pi: Test', body: 'Text', tags: ['ki'] });
-  assert.strictEqual(a, path.join('Inbox', 'Idee: Bonsai Pi Test.md'));
+  assert.strictEqual(a, path.join('Inbox', 'Idee - Bonsai Pi Test.md'));
   const b = notes.createInboxNote({ prefix: 'Idee', title: 'Bonsai / Pi: Test', body: 'Zweiter' });
-  assert.strictEqual(b, path.join('Inbox', 'Idee: Bonsai Pi Test 2.md'));
+  assert.strictEqual(b, path.join('Inbox', 'Idee - Bonsai Pi Test 2.md'));
   const content = fs.readFileSync(path.join(v.vault, a), 'utf8');
   assert.match(content, /^---\ncreated: \d{4}-\d{2}-\d{2}\nsource: assistant\ntags: \[ki\]\n---\nText\n$/);
   assert.throws(() => notes.createInboxNote({ prefix: 'Todo', title: 'x', body: '' }), /Präfix/);

@@ -32,7 +32,7 @@ function searchCycleHistory(topic, maxResults = 3) {
     if (!topicWords.length) return '';
 
     const files = fs.readdirSync(VAULT_PROJECTS)
-      .filter(f => f.endsWith('.md') && f.startsWith('Log:'));
+      .filter(f => f.endsWith('.md') && /^Log(?::| -) /.test(f));
 
     if (!files.length) return '';
 
@@ -71,8 +71,8 @@ function searchCycleHistory(topic, maxResults = 3) {
             .join('\n')
             .slice(0, 500);
 
-      // Dateiname als Titel: "Log: company-os Zyklus X - Thema DATUM.md"
-      const title = filename.replace(/^Log: company-os /, '').replace('.md', '');
+      // Dateiname als Titel: "Log - company-os Zyklus X - Thema DATUM.md" (alt: "Log: …")
+      const title = filename.replace(/^Log(?::| -) company-os /, '').replace('.md', '');
       return `**${title}**\n${preview}`;
     });
 

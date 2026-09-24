@@ -55,8 +55,8 @@ test('inkrementell: Änderung, neue Datei und Löschung', async () => {
   const later = new Date(Date.now() + 5000);
   v.write('Projekte/Berthos/Seed-Runde.md', '# Seed-Runde\n\nLead-Investor ist Speedinvest.\n');
   fs.utimesSync(path.join(v.vault, 'Projekte/Berthos/Seed-Runde.md'), later, later);
-  v.write('Inbox/Ref: Neu.md', 'Zollstock');
-  fs.rmSync(path.join(v.vault, 'Inbox/Idee: Bonsai am Pi.md'));
+  v.write('Inbox/Ref - Neu.md', 'Zollstock');
+  fs.rmSync(path.join(v.vault, 'Inbox/Idee - Bonsai am Pi.md'));
 
   const s = await ix.syncIndex();
   assert.deepStrictEqual([s.added, s.updated, s.removed], [1, 1, 1]);

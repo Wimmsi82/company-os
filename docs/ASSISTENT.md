@@ -24,7 +24,7 @@ Mac (M5, 24 GB)
 - **Befehle** (`/suche`, `/aufgabe`, `/notiz`, `/heute`, `/status`, …) laufen fest im Code auf dem Pi. Sie sind schnell und brauchen das Modell nicht.
 - **Freitext** geht an Bonsai. Vorher sucht der Code im Vault und gibt dem Modell die besten Treffer mit, bei den zwei besten auch den Text der verlinkten PDFs. Das Modell ruft keine Werkzeuge selbst auf, weil kleine Modelle das nicht zuverlässig können.
 - **Quellen** hängt der Code an jede Antwort an, als `obsidian://`-Link. Er öffnet die Notiz direkt in der Obsidian-App.
-- **Schreiben in den Vault**: Neue Notizen landen nur in `Inbox/`, mit den Präfixen `Idee:`, `Ref:` oder `Log:`. Bestehende Notizen werden nur ergänzt, nie überschrieben. Vorher landet eine Kopie in `.assistant-backup/`.
+- **Schreiben in den Vault**: Neue Notizen landen nur in `Inbox/`, als `Idee - Titel.md`, `Ref - Titel.md` oder `Log - Titel.md`. Kein Doppelpunkt im Dateinamen: Obsidian und Obsidian Sync lehnen `:` ab, solche Dateien kommen auf kein anderes Gerät. Bestehende Notizen werden nur ergänzt, nie überschrieben. Vorher landet eine Kopie in `.assistant-backup/`.
 - **Deliberationen** laufen weiter über Claude (CLI-Modus, Abo), nicht über Bonsai. Der Chat startet sie erst nach `/ja`.
 - **Mac aus oder im Ruhezustand:** Der Pi prüft vor jeder Frage in 3 Sekunden, ob das Modell antwortet. Wenn nicht, liefert der Chat sofort die passenden Vault-Treffer statt einer Antwort.
 
@@ -34,7 +34,7 @@ Mac (M5, 24 GB)
 |---|---|
 | `/suche Mietvertrag Kündigung` | Vault durchsuchen (Notizen + verlinkte PDFs, Umlaute egal: ü = ue) |
 | `/lies 1` | Treffer Nr. 1 lesen, inkl. PDF-Text; `/lies 1 ab 3500` blättert weiter |
-| `/notiz Idee: Titel \| Text` | Neue Notiz `Inbox/Idee: Titel.md` |
+| `/notiz Idee: Titel \| Text` | Neue Notiz `Inbox/Idee - Titel.md` (Eingabe mit `:` oder ` - `) |
 | `/ergaenze 1 \| Überschrift \| Text` | Text unter eine Überschrift anhängen (Backup wird angelegt) |
 | `/aufgabe Mietvertrag kündigen @ 1. Dezember` | Todoist-Aufgabe mit Fälligkeit |
 | `/heute` | Todoist heute/überfällig + offene Eskalationen + neue Notizen |
@@ -76,6 +76,18 @@ sudo cp ~/Dev/company-os/deploy/obsidian-sync.service /etc/systemd/system/
 #   Pfad von `which ob` in ExecStart prüfen
 sudo systemctl daemon-reload && sudo systemctl enable --now obsidian-sync
 ```
+
+### Dateinamen mit Doppelpunkt umbenennen (einmalig, auf dem Mac)
+
+Obsidian Sync überträgt keine Dateien mit `:` im Namen. Am 24.09.2026 waren das 851 Dateien (`Ref: …`, `Idee: …`, `Log: …`), die auf dem Pi fehlten. `scripts/rename-colon-notes.js` benennt sie in `Ref - …` um und passt alle Links an:
+
+```bash
+node rename-colon-notes.js ~/Bernhard/Obsidian            # Probelauf
+node rename-colon-notes.js ~/Bernhard/Obsidian --apply    # mit Backup nach ~/obsidian-rename-backup-<zeit>/
+node rename-colon-notes.js --undo ~/obsidian-rename-backup-<zeit>/manifest.json
+```
+
+Versteckte Ordner und `node_modules` bleiben unberührt. Obsidian vorher schliessen. Danach alle Werkzeuge, die Notizen anlegen (Custom Instructions, andere Agenten), auf `Idee - `, `Ref - `, `Log - ` umstellen, sonst entstehen neue Dateien mit Doppelpunkt.
 
 ### 3. `.env` auf dem Pi ergänzen (Vorlage: `.env.example`, Abschnitt ASSISTENT)
 

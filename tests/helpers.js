@@ -39,7 +39,7 @@ function makeVault() {
   w('Projekte/Vertraege/Leasing.md', '# Leasing\n\nSiehe [Vertrag](../../Anhaenge/Leasing%20Auto.pdf) #auto\n');
   w('Anhaenge/Leasing Auto.pdf', makePdf('Leasingrate 399 EUR monatlich, Laufzeit 48 Monate.'));
   w('Projekte/Berthos/Seed-Runde.md', '# Seed-Runde\n\nZiel: 800k Seed-Finanzierung für Berthos. Gespräch mit Investoren im Oktober. Kündigung kein Thema.\n');
-  w('Inbox/Idee: Bonsai am Pi.md', 'Bonsai 2 27B lokal testen.\n');
+  w('Inbox/Idee - Bonsai am Pi.md', 'Bonsai 2 27B lokal testen.\n');
   w('.trash/alt.md', 'Mietvertrag geheim');
 
   process.env.VAULT_PATH = vault;

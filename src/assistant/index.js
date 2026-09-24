@@ -12,7 +12,7 @@ const HELP = [
   'Befehle:',
   '/suche <Begriffe> – Vault durchsuchen (inkl. verlinkter PDFs)',
   '/lies <Nr. oder Pfad> – Notiz lesen (Nr. aus der letzten Suche)',
-  '/notiz Idee|Ref|Log: <Titel> | <Text> – neue Notiz in Inbox/',
+  '/notiz Idee|Ref|Log: <Titel> | <Text> – neue Notiz Inbox/Idee - Titel.md',
   '/ergaenze <Nr. oder Pfad> | <Überschrift> | <Text> – an Notiz anhängen',
   '/aufgabe <Text> @ <Fälligkeit> – Todoist-Aufgabe (z. B. "@ morgen 9 Uhr")',
   '/heute – Todoist heute + offene Eskalationen + neue Notizen',
@@ -97,7 +97,7 @@ function createAssistant(deps = {}) {
     },
 
     async notiz(arg) {
-      const m = String(arg).match(/^(Idee|Ref|Log)\s*:\s*([^|]+?)\s*(?:\|\s*([\s\S]*))?$/i);
+      const m = String(arg).match(/^(Idee|Ref|Log)\s*(?::|\s-)\s*([^|]+?)\s*(?:\|\s*([\s\S]*))?$/i);
       if (!m) return { reply: 'Format: /notiz Idee|Ref|Log: Titel | Text' };
       const prefix = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
       const rel = notes.createInboxNote({ prefix, title: m[2], body: m[3] ?? '' });

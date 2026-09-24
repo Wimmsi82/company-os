@@ -92,11 +92,13 @@ test('/aufgabe legt Todoist-Aufgabe mit Fälligkeit an', async () => {
 
 test('/notiz legt Inbox-Notiz an, /ergaenze hängt an', async () => {
   const r = await ask('/notiz idee: Bonsai Benchmark | Pi 5 messen');
-  assert.match(r.reply, /✓ Notiz angelegt: Inbox\/Idee: Bonsai Benchmark\.md/);
-  const e = await ask('/ergaenze Inbox/Idee: Bonsai Benchmark | Ergebnis | 4 Token/s');
+  assert.match(r.reply, /✓ Notiz angelegt: Inbox\/Idee - Bonsai Benchmark\.md/);
+  const e = await ask('/ergaenze Inbox/Idee - Bonsai Benchmark | Ergebnis | 4 Token/s');
   assert.match(e.reply, /✓ Ergänzt: .*unter „Ergebnis“/);
-  assert.match(fs.readFileSync(`${v.vault}/Inbox/Idee: Bonsai Benchmark.md`, 'utf8'), /## Ergebnis\n\n4 Token\/s\n$/);
+  assert.match(fs.readFileSync(`${v.vault}/Inbox/Idee - Bonsai Benchmark.md`, 'utf8'), /## Ergebnis\n\n4 Token\/s\n$/);
   assert.match((await ask('/notiz ohne Format')).reply, /Format:/);
+  const d = await ask('/notiz Ref - Zweite Schreibweise | Text');
+  assert.match(d.reply, /✓ Notiz angelegt: Inbox\/Ref - Zweite Schreibweise\.md/);
 });
 
 test('/heute, /status, /eskalationen, /antwort mit ID-Präfix', async () => {

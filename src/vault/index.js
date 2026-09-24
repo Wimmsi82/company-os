@@ -21,6 +21,8 @@ function vaultPath() {
 
 const PROJECT_DIR = () => path.join(vaultPath(), 'Projekte', 'company-os');
 const INBOX_DIR    = () => path.join(vaultPath(), 'Inbox');
+// Alte Notizen heissen "Log: …", neue "Log - …" (":" synct Obsidian nicht)
+const LOG_NOTE = /^Log(?::| -) /;
 
 function safeName(s) {
   return String(s).replace(/[\\/:*?"<>|]/g, '-').trim();
@@ -46,8 +48,8 @@ function readVaultContext(topic) {
     const words = String(topic).toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/)
       .filter(w => w.length > 3 && !stopWords.has(w));
 
-    // Kontext-Notizen: alles was NICHT mit "Log:" beginnt (das sind die Cycle-Logs, siehe search.js)
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('.md') && !f.startsWith('Log:'));
+    // Kontext-Notizen: alles ausser den Cycle-Logs (siehe search.js)
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.md') && !LOG_NOTE.test(f));
     if (!files.length) return '';
 
     const matches = files.filter(f => {
@@ -73,7 +75,7 @@ function readVaultContext(topic) {
 /**
  * Schreibt das Ergebnis einer Deliberation als Log-Notiz, passend zum Format,
  * das src/vault/search.js für die Cycle-History-RAG erwartet: Dateiname
- * "Log: company-os Zyklus {id} - {topic} {datum}.md" mit einem
+ * "Log - company-os Zyklus {id} - {topic} {datum}.md" mit einem
  * "## CEO-Synthese"-Abschnitt.
  * @param {{ cycleId, topic, phase1: Record<string,string>, phase2: Record<string,string>, decision: string }} args
  */
@@ -83,7 +85,7 @@ function writeCycleLog({ cycleId, topic, phase1 = {}, phase2 = {}, decision = ''
     fs.mkdirSync(dir, { recursive: true });
 
     const shortTopic = safeName(String(topic).slice(0, 60));
-    const filename = `Log: company-os Zyklus ${cycleId} - ${shortTopic} ${today()}.md`;
+    const filename = `Log - company-os Zyklus ${cycleId} - ${shortTopic} ${today()}.md`;
 
     const section = (title, obj) => {
       const entries = Object.entries(obj);
@@ -126,7 +128,7 @@ function writeAlertToInbox(name, value, threshold, dept) {
     fs.mkdirSync(dir, { recursive: true });
 
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `Log: Metrik-Alert ${safeName(name)} ${stamp}.md`;
+    const filename = `Log - Metrik-Alert ${safeName(name)} ${stamp}.md`;
     const content = [
       '---',
       `created: ${today()}`,

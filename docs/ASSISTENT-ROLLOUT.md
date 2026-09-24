@@ -157,7 +157,7 @@ In Telegram nacheinander ausführen und abhaken:
 | 5 | "Wann kann ich den Mietvertrag kündigen?" | Antwort mit [1] und Quellenliste, Dauer notieren |
 | 6 | "Und zu welchem Termin?" | Folgefrage nutzt den Verlauf |
 | 7 | `/aufgabe Mietvertrag prüfen @ morgen 9 Uhr` | Aufgabe in Todoist mit dem Label `assistent` |
-| 8 | `/notiz Idee: Bonsai Pi Test \| Messwert 25 s` | Notiz am iPhone in `Inbox/` nach 1 bis 2 min |
+| 8 | `/notiz Idee: Bonsai Pi Test \| Messwert 25 s` | Notiz `Inbox/Idee - Bonsai Pi Test.md` am iPhone nach 1 bis 2 min |
 | 9 | `/ergaenze 1 \| Notizen \| Test vom Pi` | Text angehängt, Backup in `.assistant-backup/` |
 | 10 | `/heute` | Todoist heute, Eskalationen, geänderte Notizen |
 | 11 | `/status`, `/eskalationen` | Daten aus Company OS |
