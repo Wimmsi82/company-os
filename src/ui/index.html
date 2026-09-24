@@ -164,6 +164,17 @@
   .confirm-actions{display:flex;gap:.5rem;justify-content:flex-end}
   .confirm-input{width:100%;margin-bottom:.9rem}
 
+  /* ASSISTENT-CHAT */
+  .chat-log{display:flex;flex-direction:column;gap:.6rem;max-height:60vh;overflow-y:auto;padding:.25rem 0}
+  .chat-msg{max-width:85%;padding:.6rem .85rem;border-radius:10px;font-family:'DM Mono',monospace;font-size:.74rem;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  .chat-msg.user{align-self:flex-end;background:rgba(79,110,247,.15);border:1px solid rgba(79,110,247,.3);color:var(--bright)}
+  .chat-msg.bot{align-self:flex-start;background:var(--s2);border:1px solid var(--border);color:var(--text)}
+  .chat-msg.bot.err{border-color:rgba(239,68,68,.35)}
+  .chat-msg a{color:var(--cyan)}
+  .chat-wait{align-self:flex-start;font-family:'DM Mono',monospace;font-size:.68rem;color:var(--dim)}
+  .chat-health{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--dim)}
+  .chat-health .ok{color:var(--green)}.chat-health .bad{color:var(--red)}
+
   @media (prefers-reduced-motion: reduce) {
     .pulse{animation:none;opacity:.7}
     button:hover{transform:none}
@@ -188,6 +199,7 @@
   <!-- TABS -->
   <div class="tabs">
     <div class="tab active" onclick="showView('run',this)">Aufgabe</div>
+    <div class="tab" onclick="showView('assistant',this)">Assistent</div>
     <div class="tab" onclick="showView('escalations',this)">Inbox <span class="tab-badge" id="escBadge"></span></div>
     <div class="tab" onclick="showView('tasks',this)">Tasks</div>
     <div class="tab" onclick="showView('followups',this)">Follow-ups</div>
@@ -223,6 +235,34 @@
     <div class="card">
       <div class="card-header"><span class="card-title"><span class="pulse"></span>Log</span></div>
       <div class="card-body"><div class="log-body" id="logBody"></div></div>
+    </div>
+  </div>
+
+  <!-- ── ASSISTENT ── -->
+  <div class="view" id="view-assistant">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Assistent · Vault · Todoist · Company OS</span>
+        <span class="chat-health" id="chatHealth" role="status">Prüfe Modell …</span>
+      </div>
+      <div class="card-body">
+        <div class="chat-log" id="chatLog" aria-label="Gesprächsverlauf">
+          <div class="chat-msg bot">Frag mich etwas zu deinen Unterlagen, z. B. „Wann kann ich den Mietvertrag kündigen?“ — oder nutze einen Befehl. /hilfe zeigt alle.</div>
+        </div>
+        <div class="run-area mt">
+          <textarea id="chatInput" rows="2" placeholder="Nachricht oder /befehl … (Enter sendet, Shift+Enter = neue Zeile)" aria-label="Nachricht an den Assistenten"></textarea>
+          <button id="chatSend" onclick="sendChat()">Senden</button>
+          <button class="sec" id="chatCancel" onclick="cancelChat()" hidden>Abbrechen</button>
+        </div>
+        <div class="presets">
+          <span class="chip" onclick="chatPreset(this)">/heute</span>
+          <span class="chip" onclick="chatPreset(this)">/suche </span>
+          <span class="chip" onclick="chatPreset(this)">/aufgabe  @ morgen</span>
+          <span class="chip" onclick="chatPreset(this)">/notiz Idee: </span>
+          <span class="chip" onclick="chatPreset(this)">/eskalationen</span>
+          <span class="chip" onclick="chatPreset(this)">/neu</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -496,7 +536,7 @@ function showView(id, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('view-' + id).classList.add('active');
   el.classList.add('active');
-  const loaders = { escalations: loadEscalations, tasks: loadTasks, followups: loadFollowups, metrics: loadMetrics, memory: loadMemory, messages: loadMessages, budget: loadBudget, cycles: loadCycles, projects: loadProjects, webhooks: loadWebhooks };
+  const loaders = { assistant: loadChatHealth, escalations: loadEscalations, tasks: loadTasks, followups: loadFollowups, metrics: loadMetrics, memory: loadMemory, messages: loadMessages, budget: loadBudget, cycles: loadCycles, projects: loadProjects, webhooks: loadWebhooks };
   if (loaders[id]) loaders[id]();
 }
 
@@ -527,6 +567,105 @@ function dur(a, b) {
   return s < 60 ? `${s}s` : `${Math.floor(s/60)}m${s%60}s`;
 }
 function setTopic(el) { document.getElementById('topicInput').value = el.textContent; }
+
+// ── ASSISTENT-CHAT ─────────────────────────────────────
+
+let _chatAbort = null;
+let _lastChatSec = null; // gemessene Dauer der letzten Modell-Antwort (für ehrliche Wartezeit-Angabe)
+
+function escHtml(t) {
+  return String(t).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function linkify(t) {
+  return escHtml(t).replace(/(obsidian:\/\/[^\s<]+|https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.startsWith('obsidian:') ? 'In Obsidian öffnen' : u}</a>`);
+}
+function chatAppend(role, text, isErr = false) {
+  const log = document.getElementById('chatLog');
+  const el = document.createElement('div');
+  el.className = `chat-msg ${role}${isErr ? ' err' : ''}`;
+  if (isErr) el.setAttribute('role', 'alert');
+  el.innerHTML = linkify(text);
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  return el;
+}
+function chatPreset(el) {
+  const input = document.getElementById('chatInput');
+  input.value = el.textContent;
+  input.focus();
+}
+
+async function loadChatHealth() {
+  const el = document.getElementById('chatHealth');
+  try {
+    const h = await fetchJSON(B + '/assistant/health');
+    el.innerHTML = [
+      `Modell <span class="${h.llm ? 'ok' : 'bad'}">${h.llm ? 'bereit' : 'offline'}</span>`,
+      `Vault <span class="${h.vault_index === 'ok' ? 'ok' : 'bad'}">${escHtml(h.vault_index)}</span>`,
+      `Todoist <span class="${h.todoist ? 'ok' : 'bad'}">${h.todoist ? 'verbunden' : 'aus'}</span>`,
+    ].join(' · ');
+  } catch (err) {
+    el.innerHTML = `<span class="bad" role="alert">Status nicht abrufbar: ${escHtml(err.message)}</span>`;
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('chatSend');
+  const cancel = document.getElementById('chatCancel');
+  const text = input.value.trim();
+  if (!text || _chatAbort) return;
+
+  chatAppend('user', text);
+  input.value = '';
+  btn.disabled = true; btn.setAttribute('aria-busy', 'true');
+  cancel.hidden = false;
+
+  // Freitext geht ans Modell auf dem Mac und kann dauern. Echte verstrichene Zeit zeigen,
+  // plus die gemessene Dauer der letzten Antwort als Anhaltspunkt — keine erfundenen Werte.
+  const isCmd = text.startsWith('/');
+  const wait = document.createElement('div');
+  wait.className = 'chat-wait';
+  wait.setAttribute('role', 'status');
+  document.getElementById('chatLog').appendChild(wait);
+  const started = Date.now();
+  const tick = () => {
+    const s = Math.floor((Date.now() - started) / 1000);
+    if (isCmd) { wait.textContent = s >= 1 ? `Wird ausgeführt … ${s}s` : ''; return; }
+    const hint = _lastChatSec ? ` · letzte Antwort brauchte ${_lastChatSec}s` : ' · Modell auf dem Mac, kann etwas dauern';
+    wait.innerHTML = `<span class="pulse"></span>Suche im Vault, Bonsai formuliert … ${s}s${hint}`;
+  };
+  tick();
+  const timer = setInterval(tick, 1000);
+
+  _chatAbort = new AbortController();
+  try {
+    const r = await fetchJSON(B + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text }),
+      signal: _chatAbort.signal,
+    });
+    if (!isCmd && !r.error) _lastChatSec = Math.round((Date.now() - started) / 1000);
+    chatAppend('bot', r.reply, !!r.error);
+  } catch (err) {
+    chatAppend('bot', err.name === 'AbortError' ? 'Abgebrochen. (Das Modell rechnet im Hintergrund ggf. noch zu Ende.)' : `Fehler: ${err.message}`, true);
+  } finally {
+    clearInterval(timer);
+    wait.remove();
+    _chatAbort = null;
+    btn.disabled = false; btn.removeAttribute('aria-busy');
+    cancel.hidden = true;
+    input.focus();
+  }
+}
+function cancelChat() { _chatAbort?.abort(); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('chatInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  });
+});
 
 // ── STATUS ─────────────────────────────────────────────
 

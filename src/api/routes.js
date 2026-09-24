@@ -6,6 +6,7 @@ const router = express.Router();
 const orchestrator = require('../scheduler/orchestrator');
 const db = require('../db');
 const log = require('../utils/log');
+const escalations = require('../services/escalations');
 
 // ── Status ──────────────────────────────────────────────
 
@@ -207,23 +208,8 @@ router.get('/escalations/open', (req, res) => {
 router.post('/escalations/:id/answer', (req, res) => {
   const { answer } = req.body;
   if (!answer) return res.status(400).json({ error: 'answer fehlt' });
-
-  db.answerEscalation(req.params.id, answer);
-
-  // Antwort als Nachricht an die fragende Abteilung zurückschicken
-  const all = db.getAllEscalations();
-  const esc = all.find(e => e.id === req.params.id);
-  if (esc) {
-    db.createMessage({
-      from_dept: 'human',
-      to_dept: esc.from_dept,
-      subject: `Antwort auf: ${esc.question.slice(0, 60)}`,
-      body: answer,
-      task_id: esc.task_id,
-    });
-    log.info(`[API] Eskalation beantwortet → ${esc.from_dept}`);
-  }
-
+  const esc = escalations.answerEscalation(req.params.id, answer);
+  if (!esc) return res.status(404).json({ error: 'Eskalation nicht gefunden' });
   res.json({ ok: true });
 });
 
@@ -238,6 +224,33 @@ router.get('/budget', (req, res) => {
   res.json({
     today: db.getTodayBudget(),
     history: db.getBudgetHistory(),
+  });
+});
+
+// ── Assistent (Chat mit lokalem Modell) ────────────────
+
+router.post('/chat', async (req, res) => {
+  const { message, chat_id = 'dashboard' } = req.body ?? {};
+  if (!message || !String(message).trim()) return res.status(400).json({ error: 'message fehlt' });
+  try {
+    const result = await require('../assistant').handle({ channel: 'web', chatId: chat_id, text: message });
+    res.json(result);
+  } catch (err) {
+    log.error('[API] /chat Fehler: ' + err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/assistant/health', async (req, res) => {
+  const indexer = require('../vault/indexer');
+  let notes = null;
+  try { notes = indexer.recent({ days: 36500, limit: 1 }).length ? 'ok' : 'leer'; } catch { notes = 'fehlt'; }
+  res.json({
+    llm: await require('../llm/local').health(),
+    llm_url: require('../llm/local').baseUrl(),
+    vault_index: notes,
+    vault_path: indexer.vaultPath(),
+    todoist: require('../integrations/todoist').enabled(),
   });
 });
 

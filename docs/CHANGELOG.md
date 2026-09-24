@@ -1,5 +1,61 @@
 # CHANGELOG — Company OS
 
+## [2026-09-24] — Keine Doppelpunkte mehr in Dateinamen
+
+- Grund: Obsidian und Obsidian Sync (`obsidian-headless`) lehnen `:` in Dateinamen ab ("Ignoring remote file name with illegal characters"). 851 Notizen mit `Ref:`/`Idee:`/`Log:` im Namen fehlten dadurch auf dem Pi (Mac 5.647 Notizen, Pi 4.698)
+- Geändert: `src/vault/notes.js` — neue Notizen heissen `Idee - Titel.md` statt `Idee: Titel.md`
+- Geändert: `src/assistant/index.js` — `/notiz` nimmt `Idee: Titel` und `Idee - Titel` an
+- Geändert: `src/vault/index.js` — Cycle-Logs und Metrik-Alerts heissen `Log - …`; Kontext-Filter erkennt beide Schreibweisen
+- Geändert: `src/vault/search.js` — Cycle-History findet `Log - …` und alte `Log: …`
+- Erstellt: `scripts/rename-colon-notes.js` — benennt bestehende Dateien mit `:` um und passt Wikilinks (inkl. Alias, Überschrift, Einbettung), Markdown-Links und Canvas an; Probelauf als Standard, Backup und `--undo`
+- Erstellt: `tests/rename-colon-notes.test.js` (3), `tests/vault-cyclelog.test.js` (2); `/notiz`-Test um ` - `-Eingabe ergänzt
+- User-Impact: Notizen vom Assistenten und von Company OS kommen per Obsidian Sync auf Mac und iPhone; nach dem Umbenennen ist der ganze Vault auf dem Pi durchsuchbar
+
+## [2026-09-23] — Bonsai läuft auf dem Mac statt auf dem Pi
+
+- Grund: Messung auf dem Pi 5 (`Raspi2`). Vulkan stürzt bei jeder Anfrage ab (`vk::OutOfHostMemoryError`), `BONSAI_NGL=0` über das Startskript nimmt trotzdem das Vulkan-Binary, `PQ2_0` ist auf ARM unbrauchbar, und das CPU-Build mit `Q2_0_g64` schafft nur 6,7 Token/s beim Einlesen (echte Vault-Frage 3 bis 4 min). Tabelle in `docs/ASSISTENT.md`, Abschnitt Modellwahl
+- Erstellt: `scripts/install-bonsai-mac.sh` — richtet Bonsai (Default 2 27B, sonst 8B/4B/1.7B, Metal) auf dem Mac als LaunchAgent ein, nur an die Tailscale-IP gebunden, mit API-Key aus `~/.config/bonsai/api-key`, startet das Binary direkt statt über `start_llama_server.sh`
+- Fix im Mac-Installer: `launchctl bootout` arbeitet asynchron, ein zweiter Lauf scheiterte mit `Bootstrap failed: 5: Input/output error`. Das Skript wartet jetzt, bis der alte Dienst abgemeldet ist
+- Geändert: `src/llm/local.js` — `LOCAL_LLM_API_KEY` als Bearer-Token; vor jeder Anfrage 3-s-Check auf `/health`, damit ein schlafender Mac nicht bis zum Timeout (240 s) blockiert; klare Meldung bei 401
+- Geändert: `scripts/bonsai-bench.js` — API-Key, eigenes Timeout (10 min statt Node-Default 300 s), `<think>` entfernt, Fehler-JSON wird angezeigt statt leerer Antwort
+- Geändert: `tests/llm-local.test.js` — 4 Tests (Header mit/ohne Key, 401, schneller Abbruch bei hängendem `/health`)
+- Geändert: `scripts/install-bonsai-pi.sh`, `deploy/bonsai.service` — Hinweis "nicht empfohlen", bleiben als Referenz
+- Geändert: `docs/ASSISTENT.md`, `docs/ASSISTENT-ROLLOUT.md`, `docs/FEATURES.md`, `.env.example`, `CLAUDE.md`
+- User-Impact: Antworten in Sekunden statt Minuten. Schläft der Mac, liefert der Chat nach 3 s die Vault-Treffer
+
+## [2026-09-23] — Bonsai-Installer: BONSAI_FAMILY fehlte
+
+- Geändert: `scripts/install-bonsai-pi.sh`, `deploy/bonsai.service` — Bonsai 2 (Familie `bonsai2`) gibt es nur als 27B, jede kleinere Größe (8B/4B/1.7B) läuft über `BONSAI_FAMILY=ternary`. Der Installer leitet die Familie jetzt automatisch aus der gewünschten Größe ab und trägt sie auch in die systemd-Unit ein (vorher wurde nur `BONSAI_MODEL` templated, `BONSAI_FAMILY` blieb auf `bonsai2` stehen)
+- Gefunden beim ersten echten Lauf auf einem Raspberry Pi 5 (`bash scripts/install-bonsai-pi.sh 8B` brach mit `[ERR] Bonsai 2 is 27B.` ab)
+- User-Impact: `install-bonsai-pi.sh 8B|4B|1.7B` funktioniert jetzt ohne manuellen Eingriff
+
+## [2026-09-23] — Fehlende src/db/ und src/vault/index.js rekonstruiert
+
+- Erstellt: `src/db/migrate.js`, `src/db/index.js` — beide Dateien fehlten im gesamten Repo (auch auf dem ersten erreichbaren Pi, frischer Clone bestätigte es), rekonstruiert aus allen ~65 `db.*`-Aufrufen im Code (agents/, scheduler/, api/, webhooks/); 15 Tabellen inkl. der in diesem Changelog dokumentierten v2–v5-Erweiterungen
+- Erstellt: `src/vault/index.js` — `readVaultContext`, `writeCycleLog`, `writeAlertToInbox`, Format passend zu `src/vault/search.js`
+- Geändert: `src/vault/search.js` — Bugfix: `\z` ist in JS kein Zeilenende-Anker, der CEO-Synthese-Regex griff nie, wenn der Abschnitt am Dateiende steht
+- Erstellt: `tests/db.test.js` — 13 Tests für den rekonstruierten DB-Layer
+- User-Impact: `npm run migrate && npm start` funktioniert jetzt aus einem frischen Checkout, ohne dass DB-Dateien manuell von einem Pi kopiert werden müssen
+
+## [2026-09-23] — Assistent: Bonsai lokal + Obsidian + Todoist + Chat
+
+- Erstellt: `src/vault/indexer.js` — Volltext-Index (SQLite FTS5, eigene DB `db/vault-index.sqlite`) über den ganzen Vault inkl. Text verlinkter PDFs (`[[x.pdf]]`, `![[x.pdf]]`, `[t](pfad/x.pdf)`); Umlaut-Varianten (ü = ue); inkrementell per mtime
+- Erstellt: `src/vault/notes.js` — sicheres Lesen/Schreiben: nur `.md` im Vault, neue Notizen nur in `Inbox/` (Präfix Idee/Ref/Log), Ergänzen mit Backup in `.assistant-backup/`
+- Erstellt: `src/llm/local.js` — Client für lokales Modell (Bonsai über llama-server, OpenAI-kompatibel)
+- Erstellt: `src/assistant/` — Chat-Kern: deterministische Befehle + RAG-Freitext, Verlauf pro Chat (`db/assistant.sqlite`), Company-OS-Anbindung
+- Erstellt: `src/integrations/todoist.js` — Todoist API v1 (Aufgabe anlegen, Filter "today | overdue")
+- Erstellt: `src/notifications/telegram-bot.js` — Telegram als Chat (Long Polling, nur `TELEGRAM_CHAT_ID`)
+- Erstellt: `src/services/escalations.js` — Eskalation beantworten, gemeinsam für API und Assistent
+- Erstellt: `deploy/bonsai.service`, `deploy/obsidian-sync.service`, `scripts/install-bonsai-pi.sh`, `scripts/bonsai-bench.js`, `docs/ASSISTENT.md`, `docs/ASSISTENT-ROLLOUT.md` (Detailplan Inbetriebnahme)
+- Erstellt: `tests/` — 25 Tests (Indexer, Notizen, Assistent, LLM-Client, Telegram)
+- Geändert: `src/api/routes.js` — `POST /api/chat`, `GET /api/assistant/health`; Eskalations-Antwort über Service (404 bei unbekannter ID)
+- Geändert: `src/ui/index.html` — neuer Tab "Assistent" (Chat mit Wartezeit-Anzeige, Abbrechen, Status von Modell/Vault/Todoist)
+- Geändert: `src/index.js` — `ANTHROPIC_API_KEY` nur noch im API-Modus Pflicht; startet Vault-Index und Telegram-Bot
+- Geändert: `src/scheduler/cron.js` — Vault-Index alle `VAULT_INDEX_MINUTES`, voller Neuaufbau 03:00
+- Geändert: `.gitignore` — `db/` → `/db/` (schloss bisher auch `src/db/` aus, daher fehlt `src/db/` im Repo)
+- Geändert: `package.json` — `pdf-parse`, Test-Script `node --test tests/*.test.js`
+- User-Impact: Per Telegram oder Dashboard Fragen an die eigenen Unterlagen stellen ("Wann kann ich den Mietvertrag kündigen?"), Aufgaben nach Todoist schicken, Notizen anlegen und Company OS steuern — Modell läuft lokal am Pi, ohne API-Key
+
 ## [2026-07-18] — Globale Skill-Installation (Anthropic Skills)
 
 - Erstellt: `scripts/install-global-skills.sh` — installiert Skills aus dem offiziellen Anthropic Skills-Repo (https://github.com/anthropics/skills) global nach `~/.claude/skills`

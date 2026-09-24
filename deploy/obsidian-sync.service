@@ -1,0 +1,33 @@
+# /etc/systemd/system/obsidian-sync.service
+# Offizieller Headless-Client von Obsidian Sync (npm: obsidian-headless, Befehl `ob`).
+# Voraussetzung: Node.js 22+, Obsidian-Sync-Abo.
+#
+# Einmalig als User admin:
+#   npm install -g obsidian-headless
+#   ob login
+#   ob sync-list-remote
+#   mkdir -p ~/vault && cd ~/vault && ob sync-setup --vault "Vault"
+#   ob sync --path ~/vault          # erster vollständiger Abgleich
+# Danach: `which ob` prüfen und den Pfad unten bei ExecStart eintragen.
+#
+# Sync-Modus bleibt bidirectional (Default): der Assistent schreibt neue Notizen
+# nach Inbox/ und ergänzt bestehende — diese Änderungen müssen zurück zum Mac/iPhone.
+
+[Unit]
+Description=Obsidian Sync (headless) für den Company-OS-Assistenten
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/vault
+ExecStart=/usr/local/bin/ob sync --path /home/admin/vault --continuous
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obsidian-sync
+
+[Install]
+WantedBy=multi-user.target

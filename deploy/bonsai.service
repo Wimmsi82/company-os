@@ -1,0 +1,40 @@
+# /etc/systemd/system/bonsai.service
+# NICHT EMPFOHLEN: Bonsai ist auf dem Pi 5 für den Chat zu langsam oder stürzt ab
+# (Messwerte in docs/ASSISTENT.md, Abschnitt Modellwahl). Standard ist Bonsai
+# auf dem Mac: scripts/install-bonsai-mac.sh. Diese Unit bleibt als Referenz.
+#
+# Lokales Sprachmodell (Bonsai, PrismML-llama.cpp) für den Company-OS-Assistenten.
+# Installation: scripts/install-bonsai-pi.sh (legt diese Unit an)
+#
+# Modell wechseln: BONSAI_MODEL anpassen (27B, 8B, 4B, 1.7B), dann
+#   sudo systemctl daemon-reload && sudo systemctl restart bonsai
+# Nur localhost: Company OS spricht es über LOCAL_LLM_URL=http://127.0.0.1:8080 an.
+#
+# WICHTIG: Bonsai 2 (Familie "bonsai2") gibt es nur als 27B. Jede kleinere
+# Größe (8B, 4B, 1.7B) läuft über die Ternary-Bonsai-Familie — also immer
+# passend setzen: BONSAI_MODEL=27B → BONSAI_FAMILY=bonsai2, sonst "ternary".
+# scripts/install-bonsai-pi.sh setzt beide Werte automatisch zusammen.
+
+[Unit]
+Description=Bonsai llama-server (lokales LLM)
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/Dev/modelle/Bonsai-demo
+Environment=BONSAI_MODEL=8B
+Environment=BONSAI_FAMILY=ternary
+Environment=BONSAI_HOST=127.0.0.1
+Environment=BONSAI_CTX=8192
+ExecStart=/home/admin/Dev/modelle/Bonsai-demo/scripts/start_llama_server.sh
+Restart=on-failure
+RestartSec=15
+# Pi 5 hat 4 Kerne — Company OS und Obsidian Sync sollen nicht verhungern
+Nice=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bonsai
+
+[Install]
+WantedBy=multi-user.target

@@ -29,13 +29,22 @@ src/
   api/routes.js      # REST-API
   db/migrate.js      # Schema
   db/index.js        # Query-Layer
-  ui/index.html      # Dashboard
+  ui/index.html      # Dashboard (inkl. Tab "Assistent")
+  vault/indexer.js   # FTS5-Index über Vault + verlinkte PDFs
+  vault/notes.js     # Sicheres Lesen/Schreiben von Notizen (nur Inbox/ neu, sonst nur anhängen)
+  llm/local.js       # Bonsai (llama-server auf dem Mac, via Tailscale) — NUR für den Assistenten
+  assistant/         # Chat-Kern: Befehle + RAG, Verlauf, Company-Anbindung
+  integrations/todoist.js
+  notifications/telegram-bot.js  # Telegram-Chat (Long Polling)
+tests/               # node --test (npm test)
+deploy/              # systemd-Units: obsidian-sync (bonsai nur Referenz, Modell läuft auf dem Mac)
 ```
 
 ## Rules
 - Plain Node.js — kein TypeScript, kein Build-Step
 - try/catch in jedem Agent-Aufruf
-- Alle Claude-Calls ueber src/api/claude.js
+- Alle Claude-Calls ueber src/api/claude.js; das lokale Modell (Assistent) nur ueber src/llm/local.js
+- Assistent schreibt nie direkt ins Dateisystem, nur ueber src/vault/notes.js (Pfad-Pruefung, Backup)
 - Kein API Key im Code — process.env.ANTHROPIC_API_KEY
 - SQLite-Writes mit Transaktion wenn mehrere zusammengehoeren
 - Vor Dateiaenderungen: lesen, dann handeln
@@ -99,3 +108,4 @@ entsprechend simpel:
 @docs/FEATURES.md
 @docs/CHANGELOG.md
 @INSTALL.md
+@docs/ASSISTENT.md

@@ -32,7 +32,7 @@ function searchCycleHistory(topic, maxResults = 3) {
     if (!topicWords.length) return '';
 
     const files = fs.readdirSync(VAULT_PROJECTS)
-      .filter(f => f.endsWith('.md') && f.startsWith('Log:'));
+      .filter(f => f.endsWith('.md') && /^Log(?::| -) /.test(f));
 
     if (!files.length) return '';
 
@@ -59,7 +59,10 @@ function searchCycleHistory(topic, maxResults = 3) {
 
     const excerpts = scored.map(({ filename, raw }) => {
       // CEO-Synthese-Abschnitt extrahieren wenn vorhanden
-      const ceoPart = raw.match(/## CEO-Synthese\n([\s\S]*?)(?=\n## |\n---|\z)/);
+      // Hinweis: \z ist in JS kein Anker fürs Stringende (anders als Python/Ruby) —
+      // ohne $ als dritte Alternative matcht ein am Dateiende stehender
+      // CEO-Synthese-Abschnitt (der Normalfall bei writeCycleLog) nie.
+      const ceoPart = raw.match(/## CEO-Synthese\n([\s\S]*?)(?=\n## |\n---|$)/);
       const preview = ceoPart
         ? ceoPart[1].trim().slice(0, 500)
         : raw.split('\n')
@@ -68,8 +71,8 @@ function searchCycleHistory(topic, maxResults = 3) {
             .join('\n')
             .slice(0, 500);
 
-      // Dateiname als Titel: "Log: company-os Zyklus X - Thema DATUM.md"
-      const title = filename.replace(/^Log: company-os /, '').replace('.md', '');
+      // Dateiname als Titel: "Log - company-os Zyklus X - Thema DATUM.md" (alt: "Log: …")
+      const title = filename.replace(/^Log(?::| -) company-os /, '').replace('.md', '');
       return `**${title}**\n${preview}`;
     });
 
