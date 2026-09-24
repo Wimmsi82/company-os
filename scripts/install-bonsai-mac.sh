@@ -108,8 +108,16 @@ ARGS=("$BIN" -m "$GGUF" --host "$TS" --port "$PORT" --api-key-file "$KEYFILE"
 } > "$PLIST"
 plutil -lint "$PLIST" >/dev/null
 
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
+DOMAIN="gui/$(id -u)"
+if launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
+  launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+  # bootout arbeitet asynchron; ein sofortiges bootstrap scheitert sonst mit "5: Input/output error"
+  for _ in $(seq 1 20); do
+    launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 || break
+    sleep 0.5
+  done
+fi
+launchctl bootstrap "$DOMAIN" "$PLIST" || { sleep 3; launchctl bootstrap "$DOMAIN" "$PLIST"; }
 
 printf '   warte auf das Modell '
 for _ in $(seq 1 60); do

@@ -4,6 +4,7 @@
 
 - Grund: Messung auf dem Pi 5 (`Raspi2`). Vulkan stürzt bei jeder Anfrage ab (`vk::OutOfHostMemoryError`), `BONSAI_NGL=0` über das Startskript nimmt trotzdem das Vulkan-Binary, `PQ2_0` ist auf ARM unbrauchbar, und das CPU-Build mit `Q2_0_g64` schafft nur 6,7 Token/s beim Einlesen (echte Vault-Frage 3 bis 4 min). Tabelle in `docs/ASSISTENT.md`, Abschnitt Modellwahl
 - Erstellt: `scripts/install-bonsai-mac.sh` — richtet Bonsai (Default 2 27B, sonst 8B/4B/1.7B, Metal) auf dem Mac als LaunchAgent ein, nur an die Tailscale-IP gebunden, mit API-Key aus `~/.config/bonsai/api-key`, startet das Binary direkt statt über `start_llama_server.sh`
+- Fix im Mac-Installer: `launchctl bootout` arbeitet asynchron, ein zweiter Lauf scheiterte mit `Bootstrap failed: 5: Input/output error`. Das Skript wartet jetzt, bis der alte Dienst abgemeldet ist
 - Geändert: `src/llm/local.js` — `LOCAL_LLM_API_KEY` als Bearer-Token; vor jeder Anfrage 3-s-Check auf `/health`, damit ein schlafender Mac nicht bis zum Timeout (240 s) blockiert; klare Meldung bei 401
 - Geändert: `scripts/bonsai-bench.js` — API-Key, eigenes Timeout (10 min statt Node-Default 300 s), `<think>` entfernt, Fehler-JSON wird angezeigt statt leerer Antwort
 - Geändert: `tests/llm-local.test.js` — 4 Tests (Header mit/ohne Key, 401, schneller Abbruch bei hängendem `/health`)
